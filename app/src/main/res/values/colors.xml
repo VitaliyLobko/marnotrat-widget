@@ -11,6 +11,7 @@
     <color name="ok">#10CF8E</color>
     <color name="over">#E53935</color>
     <color name="over_text">#D32F2F</color>
+    <color name="warn">#FF8A00</color>
     <color name="warn_text">#B85800</color>
     <color name="track">#E9ECEF</color>
     <color name="day">#C7CDD3</color>

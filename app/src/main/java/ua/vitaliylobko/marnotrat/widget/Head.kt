@@ -16,6 +16,8 @@ data class Head(
     val perDay: Double,
     val planned: Double,
     val plannedN: Int,
+    /** Сім днів, останній — сьогодні: дата (yyyy-MM-dd) і витрати за день. */
+    val week: List<Pair<String, Double>>,
 ) {
     val daysLeft: Int get() = (days - day + 1).coerceAtLeast(0)
 
@@ -33,6 +35,11 @@ data class Head(
             perDay = o.optDouble("perDay", 0.0),
             planned = o.optDouble("planned", 0.0),
             plannedN = o.optInt("plannedN"),
+            week = o.optJSONArray("week")?.let { a ->
+                (0 until a.length()).mapNotNull { i ->
+                    a.optJSONObject(i)?.let { it.optString("date") to it.optDouble("v", 0.0) }
+                }
+            } ?: emptyList(),
         )
     }
 }

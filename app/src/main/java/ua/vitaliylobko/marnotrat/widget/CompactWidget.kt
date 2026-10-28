@@ -5,7 +5,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 
-/** 4×1: баланс, витрати, скільки лишилось (чи понад бюджет), смужка бюджету, «+» — нова витрата. */
+/** 4×1: на день, сьогодні, баланс, в планах, смужка місяця, «−» витрата й «+» дохід. */
 class CompactWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {

@@ -2,9 +2,9 @@
 <resources>
     <string name="app_name">Віджет Марнотрату</string>
     <string name="widget_compact">Марнотрат · коротко</string>
-    <string name="widget_large">Марнотрат · день і бюджет</string>
-    <string name="widget_compact_desc">Баланс, витрати й скільки лишилось</string>
-    <string name="widget_large_desc">Скільки можна на день, сьогодні, баланс і заплановане</string>
+    <string name="widget_large">Марнотрат · день і тиждень</string>
+    <string name="widget_compact_desc">На день, сьогодні, баланс і заплановане</string>
+    <string name="widget_large_desc">Скільки можна на день і витрати за тиждень</string>
     <string name="balance">Баланс</string>
     <string name="expense">Витрати</string>
     <string name="today">Сьогодні</string>

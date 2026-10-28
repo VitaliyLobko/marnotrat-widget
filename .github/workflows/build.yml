@@ -1,10 +1,9 @@
 name: APK
 
 # Кожен пуш у main — нова збірка в Releases; Марнотрат качає останню за постійним посиланням
-# releases/latest/download/marnotrat-widget.apk
+# releases/latest/download/marnotrat-widget.apk. Інші гілки — лише збірка (перевірка, що компілюється)
 on:
   push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -43,6 +42,7 @@ jobs:
       - run: cp app/build/outputs/apk/release/app-release.apk marnotrat-widget.apk
 
       - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
         with:
           tag_name: v0.1.${{ github.run_number }}
           name: 0.1.${{ github.run_number }}

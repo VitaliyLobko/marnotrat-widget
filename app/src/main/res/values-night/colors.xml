@@ -10,6 +10,7 @@
     <color name="ok">#10CF8E</color>
     <color name="over">#FF6B6B</color>
     <color name="over_text">#FF6B6B</color>
+    <color name="warn">#FF8A00</color>
     <color name="warn_text">#FFB061</color>
     <color name="track">#30353C</color>
     <color name="day">#4A525C</color>
