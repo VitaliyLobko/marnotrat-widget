@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Кольори Марнотрату (css/app.css); темна тема — values-night -->
+<resources>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface2">#F0F0F0</color>
+    <color name="text">#222426</color>
+    <color name="muted">#6F737A</color>
+    <color name="brand">#0B9466</color>
+    <color name="brand_text">#08805A</color>
+    <color name="on_brand">#FFFFFF</color>
+    <color name="ok">#10CF8E</color>
+    <color name="over">#E53935</color>
+    <color name="over_text">#D32F2F</color>
+    <color name="warn_text">#B85800</color>
+    <color name="track">#E9ECEF</color>
+    <color name="day">#C7CDD3</color>
+    <color name="inc_bg">#E3F5FC</color>
+    <color name="inc_text">#1679A3</color>
+</resources>

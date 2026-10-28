@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Оновлення — WorkManager раз на 15 хв (updatePeriodMillis не частіше 30 хв), тож тут 0 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_compact_desc"
+    android:initialLayout="@layout/widget_compact"
+    android:previewLayout="@layout/widget_compact"
+    android:minWidth="250dp"
+    android:minHeight="50dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />
