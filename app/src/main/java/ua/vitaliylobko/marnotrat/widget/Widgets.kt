@@ -43,10 +43,11 @@ object Widgets {
         WorkManager.getInstance(c).enqueueUniqueWork("refresh-now", ExistingWorkPolicy.REPLACE, work)
     }
 
+    fun any(c: Context): Boolean =
+        ids(c, CompactWidget::class.java).isNotEmpty() || ids(c, LargeWidget::class.java).isNotEmpty()
+
     fun cancelIfNone(c: Context) {
-        if (ids(c, CompactWidget::class.java).isEmpty() && ids(c, LargeWidget::class.java).isEmpty()) {
-            WorkManager.getInstance(c).cancelUniqueWork("refresh")
-        }
+        if (!any(c)) WorkManager.getInstance(c).cancelUniqueWork("refresh")
     }
 
     fun updateAll(c: Context) {

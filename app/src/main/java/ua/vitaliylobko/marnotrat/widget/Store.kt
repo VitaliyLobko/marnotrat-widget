@@ -33,6 +33,12 @@ object Store {
         prefs(c).edit().putString("error", text).apply()
     }
 
+    fun unlockAt(c: Context): Long = prefs(c).getLong("unlock", 0L)
+
+    fun setUnlockAt(c: Context, at: Long) {
+        prefs(c).edit().putLong("unlock", at).apply()
+    }
+
     fun busy(c: Context): Boolean = prefs(c).getBoolean("busy", false)
 
     fun setBusy(c: Context, on: Boolean) {
