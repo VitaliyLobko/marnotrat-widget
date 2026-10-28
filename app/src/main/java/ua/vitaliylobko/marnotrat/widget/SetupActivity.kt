@@ -98,8 +98,8 @@ class SetupActivity : Activity() {
         line(
             when {
                 err != null -> err
-                h != null -> "Цифри від ${SimpleDateFormat("dd.MM HH:mm", Locale.ROOT).format(Date(h.sent))}: баланс ${Widgets.uah(h.balance)}, витрати ${Widgets.uah(h.expense)}."
-                else -> "Цифр ще немає — відкрий Марнотрат, він їх надішле."
+                h != null -> "Сервер перевірив ${SimpleDateFormat("dd.MM HH:mm", Locale.ROOT).format(Date(h.sent))}: баланс ${Widgets.uah(h.balance)}, витрати ${Widgets.uah(h.expense)}."
+                else -> "Цифр ще немає — відкрий Марнотрат: він передасть записи на сервер."
             },
             14f,
         )
