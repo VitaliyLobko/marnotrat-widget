@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Смужка бюджету: заливка — скільки витрачено, риска — скільки минуло періоду (виступає за смужку, видна й на заливці) -->
+<!-- Смужка бюджету: заливка — скільки витрачено, проріз із міткою під смужкою — скільки минуло періоду -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@android:id/background"
-        android:bottom="3dp"
-        android:top="3dp">
+        android:bottom="4dp"
+        android:top="4dp">
         <shape>
             <solid android:color="@color/track" />
             <corners android:radius="3dp" />
@@ -12,8 +12,8 @@
     </item>
     <item
         android:id="@android:id/progress"
-        android:bottom="3dp"
-        android:top="3dp">
+        android:bottom="4dp"
+        android:top="4dp">
         <clip>
             <shape>
                 <solid android:color="@color/brand" />

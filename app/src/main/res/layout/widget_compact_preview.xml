@@ -98,7 +98,7 @@
             <FrameLayout
                 android:id="@+id/bars"
                 android:layout_width="0dp"
-                android:layout_height="11dp"
+                android:layout_height="13dp"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1">
 

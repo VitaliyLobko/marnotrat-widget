@@ -1,14 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Риска часу: scale стискає ширину до рівня secondaryProgress, риска стоїть біля правого краю -->
+<!-- Мітка часу: scale стискає ширину до рівня secondaryProgress, мітка стоїть біля правого краю.
+     Проріз кольору тла видно на заливці, сіру мітку під смужкою — і там, де заливки ще немає -->
 <scale xmlns:android="http://schemas.android.com/apk/res/android"
     android:scaleGravity="left"
     android:scaleWidth="100%">
     <layer-list>
         <item
             android:width="2dp"
-            android:gravity="end|fill_vertical">
+            android:bottom="4dp"
+            android:gravity="end|fill_vertical"
+            android:top="4dp">
             <shape>
-                <solid android:color="@color/text" />
+                <solid android:color="@color/surface" />
+            </shape>
+        </item>
+        <item
+            android:width="2dp"
+            android:height="3dp"
+            android:gravity="end|bottom">
+            <shape>
+                <solid android:color="@color/muted" />
+                <corners android:radius="1dp" />
             </shape>
         </item>
     </layer-list>
