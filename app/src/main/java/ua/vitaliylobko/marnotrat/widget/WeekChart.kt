@@ -1,23 +1,49 @@
 package ua.vitaliylobko.marnotrat.widget
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.Icon
 import android.util.TypedValue
 import java.time.LocalDate
 
 /**
  * Стовпчики тижня для віджета 4×2 — картинкою: RemoteViews не вміє малювати діаграми.
- * Зелений — день у межах норми, помаранчевий — понад норму, бренд — сьогодні; пунктир — норма на день.
+ * З нормою: бренд — день у межах, помаранчевий — понад норму, пунктир — норма на день.
+ * Без норми (бюджетів немає або перевитрата) — сірі: «у межах» тоді нема з чим порівнювати.
  */
 object WeekChart {
     private val DAYS = arrayOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд")
 
-    fun draw(c: Context, h: Head, wDp: Int, hDp: Int): Bitmap {
+    /** Дві картинки — світла й темна: лаунчер сам бере потрібну, коли тема змінюється між оновленнями. */
+    fun icons(c: Context, h: Head, wDp: Int, hDp: Int): Pair<Icon, Icon> =
+        Icon.createWithBitmap(draw(themed(c, false), h, wDp, hDp)) to Icon.createWithBitmap(draw(themed(c, true), h, wDp, hDp))
+
+    /** Те саме словами — для TalkBack. */
+    fun describe(h: Head): String {
+        val days = h.week.mapIndexed { i, (date, v) ->
+            val day = dayName(date) + if (i == h.week.size - 1) " (сьогодні)" else ""
+            "$day ${Widgets.num(v)}"
+        }
+        val norm = norm(h)
+        return "Витрати за 7 днів: " + days.joinToString(", ") + if (norm > 0) ". Норма ${Widgets.num(norm)} на день" else ""
+    }
+
+    private fun norm(h: Head): Double = if (h.plan > 0 && h.left >= 0) h.perDay else 0.0
+
+    private fun themed(c: Context, night: Boolean): Context {
+        val conf = Configuration(c.resources.configuration)
+        val mode = if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+        conf.uiMode = (conf.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or mode
+        return c.createConfigurationContext(conf)
+    }
+
+    private fun draw(c: Context, h: Head, wDp: Int, hDp: Int): Bitmap {
         val dm = c.resources.displayMetrics
         val d = dm.density
         val bmp = Bitmap.createBitmap((wDp * d).toInt().coerceAtLeast(1), (hDp * d).toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888)
@@ -35,6 +61,13 @@ object WeekChart {
             color = c.getColor(R.color.brand_text)
             typeface = Typeface.DEFAULT_BOLD
         }
+        // Обвідка кольору тла: пунктир норми не перекреслює підписи
+        val halo = Paint(value).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3 * d
+            strokeJoin = Paint.Join.ROUND
+            color = c.getColor(R.color.surface)
+        }
         val bar = Paint(Paint.ANTI_ALIAS_FLAG)
 
         val w = bmp.width.toFloat()
@@ -42,27 +75,27 @@ object WeekChart {
         val top = labelH
         val base = bmp.height - labelH
         val area = (base - top).coerceAtLeast(1f)
-        val norm = if (h.plan > 0 && h.left >= 0) h.perDay else 0.0
+        val norm = norm(h)
         val max = maxOf(week.maxOf { it.second }, norm, 1.0)
         val gap = 6 * d
         val barW = (w - gap * (week.size - 1)) / week.size
+        val labels = mutableListOf<Triple<String, Float, Float>>()
 
-        week.forEachIndexed { i, (date, v) ->
+        week.forEachIndexed { i, (_, v) ->
             val last = i == week.size - 1
             val x = i * (barW + gap)
             val bh = maxOf(3 * d, (v / max * area).toFloat())
+            // Сьогодні порівнюється з нормою дня, а не з perDay — той уже зменшений на сьогоднішні витрати
+            val over = if (last) h.todayOver else norm > 0 && v > norm
             bar.color = c.getColor(
                 when {
-                    last -> R.color.brand
-                    norm > 0 && v > norm -> R.color.warn
-                    else -> R.color.ok
+                    over -> R.color.warn
+                    norm > 0 -> R.color.brand
+                    else -> R.color.muted
                 },
             )
             cv.drawRoundRect(RectF(x, base - bh, x + barW, base), 4 * d, 4 * d, bar)
-            val cx = x + barW / 2
-            cv.drawText(short(v), cx, base - bh - 3 * d, if (last) today else value)
-            val day = runCatching { DAYS[LocalDate.parse(date).dayOfWeek.value - 1] }.getOrDefault("")
-            cv.drawText(day, cx, bmp.height - 2 * d, if (last) today else small)
+            labels += Triple(short(v), x + barW / 2, base - bh - 3 * d)
         }
 
         if (norm > 0) {
@@ -76,8 +109,20 @@ object WeekChart {
             }
             cv.drawLine(0f, y, w, y, line)
         }
+
+        labels.forEachIndexed { i, (text, cx, y) ->
+            val last = i == labels.size - 1
+            val paint = if (last) today else value
+            halo.typeface = paint.typeface
+            cv.drawText(text, cx, y, halo)
+            cv.drawText(text, cx, y, paint)
+            cv.drawText(dayName(week[i].first), cx, bmp.height - 2 * d, if (last) today else small)
+        }
         return bmp
     }
+
+    private fun dayName(date: String): String =
+        runCatching { DAYS[LocalDate.parse(date).dayOfWeek.value - 1] }.getOrDefault("")
 
     /** «2,1к», «850», «0» — над стовпчиком місця мало. */
     private fun short(v: Double): String {

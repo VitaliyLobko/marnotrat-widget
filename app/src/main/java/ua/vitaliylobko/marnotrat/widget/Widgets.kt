@@ -6,6 +6,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import android.view.View
 import android.widget.RemoteViews
 import androidx.work.Constraints
@@ -59,7 +62,7 @@ object Widgets {
     private fun ids(c: Context, cls: Class<*>): IntArray =
         AppWidgetManager.getInstance(c).getAppWidgetIds(ComponentName(c, cls))
 
-    /** 4×1: на день, сьогодні, баланс, в планах; смужка місяця; «−» витрата й «+» дохід. */
+    /** 4×1: баланс крупно; на день, сьогодні, в планах — довідкою праворуч; смужка місяця; «−» витрата й «+» дохід. */
     fun compact(c: Context): RemoteViews {
         val v = RemoteViews(c.packageName, R.layout.widget_compact)
         val h = Store.head(c)
@@ -74,25 +77,8 @@ object Widgets {
             v.setViewVisibility(R.id.bars, View.GONE)
             return v
         }
-        when {
-            h.plan <= 0 -> {
-                v.setTextViewText(R.id.c1_l, c.getString(R.string.expense))
-                v.setTextViewText(R.id.c1_v, num(h.expense))
-                v.setColorStateList(R.id.c1_v, "setTextColor", R.color.text)
-            }
-            h.left >= 0 -> {
-                v.setTextViewText(R.id.c1_l, "На день")
-                v.setTextViewText(R.id.c1_v, num(h.perDay))
-                v.setColorStateList(R.id.c1_v, "setTextColor", R.color.brand_text)
-            }
-            else -> {
-                v.setTextViewText(R.id.c1_l, "Понад бюджет")
-                v.setTextViewText(R.id.c1_v, num(-h.left))
-                v.setColorStateList(R.id.c1_v, "setTextColor", R.color.over_text)
-            }
-        }
+        head(c, v, h, short = true, unit = true)
         v.setTextViewText(R.id.today_v, num(h.today))
-        v.setTextViewText(R.id.bal_v, num(h.balance))
         v.setTextViewText(R.id.plan_v, num(h.planned))
         bars(v, h)
         v.setTextViewText(
@@ -106,48 +92,64 @@ object Widgets {
         return v
     }
 
-    /** 4×2: скільки можна на день, стовпчики тижня з нормою, сьогодні · баланс · в планах. */
+    /** 4×2: баланс і скільки можна на день, стовпчики тижня з нормою, сьогодні · в планах. */
     fun large(c: Context, m: AppWidgetManager, id: Int): RemoteViews {
         val v = RemoteViews(c.packageName, R.layout.widget_large)
         val h = Store.head(c)
         v.setOnClickPendingIntent(R.id.root, if (Store.config(c) == null) openSetup(c) else openApp(c, ""))
         v.setOnClickPendingIntent(R.id.add_expense, openApp(c, "#add/expense"))
         v.setOnClickPendingIntent(R.id.add_income, openApp(c, "#add/income"))
-        v.setOnClickPendingIntent(R.id.refresh, refresh(c, LargeWidget::class.java))
+        // Увесь нижній рядок, а не лише ⟳ на 24 dp — у маленьку кнопку важко влучити
+        v.setOnClickPendingIntent(R.id.status_row, refresh(c, LargeWidget::class.java))
         stamp(c, v, h)
         if (h == null) {
-            v.setTextViewText(R.id.hero_l, c.getString(R.string.app_name))
-            v.setTextViewText(R.id.stats, Store.error(c) ?: if (Store.config(c) == null) "Підключи в Марнотраті → Налаштування" else "")
+            v.setTextViewText(R.id.rest, Store.error(c) ?: if (Store.config(c) == null) "Підключи в Марнотраті → Налаштування" else "")
             return v
         }
-        when {
-            h.plan <= 0 -> {
-                v.setTextViewText(R.id.hero_l, "Витрати за період")
-                v.setTextViewText(R.id.hero_v, uah(h.expense))
-                v.setColorStateList(R.id.hero_v, "setTextColor", R.color.text)
-            }
-            h.left >= 0 -> {
-                v.setTextViewText(R.id.hero_l, "Можна ще на день · ще ${days(h.daysLeft)}")
-                v.setTextViewText(R.id.hero_v, uah(h.perDay))
-                v.setColorStateList(R.id.hero_v, "setTextColor", R.color.brand_text)
-            }
-            else -> {
-                v.setTextViewText(R.id.hero_l, "Понад бюджет · ще ${days(h.daysLeft)}")
-                v.setTextViewText(R.id.hero_v, uah(-h.left))
-                v.setColorStateList(R.id.hero_v, "setTextColor", R.color.over_text)
-            }
-        }
-        v.setTextViewText(R.id.stats, "Сьогодні ${num(h.today)}   Баланс ${num(h.balance)}   В планах ${num(h.planned)}")
         // Розмір віджета в dp з налаштувань лаунчера (у портреті — мінімальна ширина й максимальна висота);
-        // під діаграму — висота мінус рядок зверху (~58 dp), рядок знизу (~24 dp) і відступи
+        // під діаграму — висота мінус рядок зверху (54 dp), рядок знизу (32 dp), відступи й проміжки (36 dp)
         val o = m.getAppWidgetOptions(id)
         val wDp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH).takeIf { it > 0 } ?: 320
         val hDp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).takeIf { it > 0 } ?: 180
-        v.setImageViewBitmap(R.id.chart, WeekChart.draw(c, h, wDp - 28, (hDp - 122).coerceIn(40, 240)))
+        // На вузькому «грн» поступається місцем самому балансу
+        head(c, v, h, short = false, unit = wDp >= 300)
+        v.setTextViewText(R.id.today_v, "${c.getString(R.string.today)} ${num(h.today)}")
+        val rest = "  ·  ${c.getString(R.string.planned).lowercase()} ${num(h.planned)}"
+        v.setTextViewText(R.id.rest, if (h.plan > 0) "$rest  ·  ще ${days(h.daysLeft)}" else rest)
+        val (light, dark) = WeekChart.icons(c, h, wDp - 27, (hDp - 122).coerceIn(40, 240))
+        v.setIcon(R.id.chart, "setImageIcon", light, dark)
+        v.setContentDescription(R.id.chart, WeekChart.describe(h))
         return v
     }
 
-    /** Зелене — скільки бюджету витрачено, сіре під ним — скільки минуло періоду. Без бюджету смужки немає. */
+    /**
+     * Спільне для обох: баланс (від'ємний — червоним) і друге число — на день, понад бюджет
+     * або витрати, коли бюджетів немає; «сьогодні» помаранчевим, якщо витрачено більше за норму дня.
+     */
+    private fun head(c: Context, v: RemoteViews, h: Head, short: Boolean, unit: Boolean) {
+        v.setTextViewText(R.id.bal_v, if (unit) money(h.balance) else num(h.balance))
+        v.setColorStateList(R.id.bal_v, "setTextColor", if (h.balance < 0) R.color.over_text else R.color.text)
+        val (label, value, color) = when {
+            h.plan <= 0 -> Triple(c.getString(R.string.expense), h.expense, R.color.text)
+            h.left >= 0 -> Triple(c.getString(R.string.per_day), h.perDay, R.color.brand_text)
+            else -> Triple(if (short) "Понад" else "Понад бюджет", -h.left, R.color.over_text)
+        }
+        v.setTextViewText(R.id.c1_l, label)
+        v.setTextViewText(R.id.c1_v, if (short || !unit) num(value) else money(value))
+        v.setColorStateList(R.id.c1_v, "setTextColor", color)
+        v.setColorStateList(R.id.today_v, "setTextColor", if (h.todayOver) R.color.warn_text else R.color.text)
+    }
+
+    /** «18 731 грн»: «грн» дрібніше — число читається першим. */
+    private fun money(v: Double): CharSequence {
+        val s = SpannableStringBuilder(num(v))
+        val at = s.length
+        s.append(" грн")
+        s.setSpan(RelativeSizeSpan(0.5f), at, s.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        return s
+    }
+
+    /** Заливка — скільки бюджету витрачено, риска — скільки минуло періоду. Без бюджету смужки немає. */
     private fun bars(v: RemoteViews, h: Head) {
         if (h.plan <= 0) {
             v.setViewVisibility(R.id.bars, View.GONE)
@@ -181,12 +183,18 @@ object Widgets {
     private fun staleStamp(c: Context, v: RemoteViews, h: Head?) {
         val text = when {
             Store.busy(c) -> "…"
+            // Коротко, щоб не з'їдати смужку: сьогоднішні — час, давніші — дата
             h != null && h.sent > 0 && System.currentTimeMillis() - h.sent > STALE_MS ->
-                "дані з " + SimpleDateFormat("dd.MM HH:mm", Locale.ROOT).format(Date(h.sent))
+                "дані з " + SimpleDateFormat(if (sameDay(h.sent)) "HH:mm" else "dd.MM", Locale.ROOT).format(Date(h.sent))
             else -> null
         }
         v.setViewVisibility(R.id.stamp, if (text == null) View.GONE else View.VISIBLE)
         if (text != null) v.setTextViewText(R.id.stamp, text)
+    }
+
+    private fun sameDay(t: Long): Boolean {
+        val f = SimpleDateFormat("yyyyMMdd", Locale.ROOT)
+        return f.format(Date(t)) == f.format(Date())
     }
 
     private val MONEY = DecimalFormat("#,##0", DecimalFormatSymbols(Locale.ROOT).apply { groupingSeparator = ' ' })

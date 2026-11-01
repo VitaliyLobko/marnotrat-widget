@@ -21,6 +21,12 @@ data class Head(
 ) {
     val daysLeft: Int get() = (days - day + 1).coerceAtLeast(0)
 
+    /** Норма на сьогодні, як її рахувало б зранку: perDay уже зменшений на сьогоднішні витрати. */
+    val todayNorm: Double get() = if (daysLeft > 0) maxOf(left + today, 0.0) / daysLeft else 0.0
+
+    /** Сьогодні витрачено більше за норму дня; без бюджетів — ніколи. */
+    val todayOver: Boolean get() = plan > 0 && today > todayNorm
+
     companion object {
         fun parse(o: JSONObject) = Head(
             sent = o.optLong("sent"),

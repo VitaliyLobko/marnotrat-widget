@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Риска часу: scale стискає ширину до рівня secondaryProgress, риска стоїть біля правого краю -->
+<scale xmlns:android="http://schemas.android.com/apk/res/android"
+    android:scaleGravity="left"
+    android:scaleWidth="100%">
+    <layer-list>
+        <item
+            android:width="2dp"
+            android:gravity="end|fill_vertical">
+            <shape>
+                <solid android:color="@color/text" />
+            </shape>
+        </item>
+    </layer-list>
+</scale>

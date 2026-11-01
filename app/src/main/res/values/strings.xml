@@ -5,6 +5,7 @@
     <string name="widget_large">Марнотрат · день і тиждень</string>
     <string name="widget_compact_desc">На день, сьогодні, баланс і заплановане</string>
     <string name="widget_large_desc">Скільки можна на день і витрати за тиждень</string>
+    <string name="per_day">На день</string>
     <string name="balance">Баланс</string>
     <string name="expense">Витрати</string>
     <string name="today">Сьогодні</string>
