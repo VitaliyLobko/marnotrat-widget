@@ -174,10 +174,16 @@ class QuickConfigActivity : Activity() {
             val code = (cls.name + it.joinToString(",") { x -> x.id }).hashCode()
             PendingIntent.getBroadcast(this, code, done, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
+        // Прев'ю — лише з першою монетою: стопка з трьох — шість картинок (світла й темна), і запит до системи
+        // перевищує ліміт Binder (~1 МБ) — віджет не ставиться. Не пройшло й так — просимо без прев'ю.
         val extras = if (compact) Bundle().apply {
-            putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, Widgets.compact(this@QuickConfigActivity, AppWidgetManager.INVALID_APPWIDGET_ID, cats))
+            putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, Widgets.compact(this@QuickConfigActivity, AppWidgetManager.INVALID_APPWIDGET_ID, cats.take(1)))
         } else null
-        if (m.isRequestPinAppWidgetSupported) m.requestPinAppWidget(ComponentName(this, cls), extras, callback)
+        if (m.isRequestPinAppWidgetSupported) {
+            val target = ComponentName(this, cls)
+            val ok = runCatching { m.requestPinAppWidget(target, extras, callback) }.getOrDefault(false)
+            if (!ok && extras != null) runCatching { m.requestPinAppWidget(target, null, callback) }
+        }
         finish()
     }
 
