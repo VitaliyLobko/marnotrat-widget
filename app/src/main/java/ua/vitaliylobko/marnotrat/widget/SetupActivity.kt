@@ -157,7 +157,7 @@ class SetupActivity : Activity() {
         val pin = { cls: Class<*> -> { m.requestPinAppWidget(ComponentName(this, cls), null, null); Unit } }
         val plus = if (canPin) R.drawable.ic_plus_line else null
         return ui.card {
-            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, сьогодні, смужка місяця, «−» і «+»", plus, pin(CompactWidget::class.java)))
+            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або монета витрати — «Налаштувати» на віджеті", plus, pin(CompactWidget::class.java)))
             addView(ui.divider())
             addView(ui.row(ui.thumb(R.drawable.thumb_4x2), "День і тиждень · 4×2", "Витрати за 7 днів із нормою, смужка місяця, наступний платіж", plus, pin(LargeWidget::class.java)))
             addView(ui.divider())

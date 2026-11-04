@@ -56,7 +56,7 @@ object Widgets {
 
     fun updateAll(c: Context) {
         val m = AppWidgetManager.getInstance(c)
-        for (id in ids(c, CompactWidget::class.java)) m.updateAppWidget(id, compact(c))
+        for (id in ids(c, CompactWidget::class.java)) m.updateAppWidget(id, compact(c, id))
         for (id in ids(c, LargeWidget::class.java)) m.updateAppWidget(id, large(c, m, id))
         for (id in ids(c, QuickWidget::class.java)) m.updateAppWidget(id, quick(c, id))
     }
@@ -64,13 +64,28 @@ object Widgets {
     private fun ids(c: Context, cls: Class<*>): IntArray =
         AppWidgetManager.getInstance(c).getAppWidgetIds(ComponentName(c, cls))
 
-    /** 4×1: баланс крупно; на день, сьогодні, платежі — довідкою праворуч; смужка місяця; «−» витрата й «+» дохід. */
-    fun compact(c: Context): RemoteViews {
+    /**
+     * 4×1: баланс крупно; на день, сьогодні, платежі — довідкою праворуч; смужка місяця; праворуч «−» витрата
+     * й «+» дохід або монета вибраної витрати («Налаштувати» на віджеті).
+     */
+    fun compact(c: Context, id: Int): RemoteViews {
         val v = RemoteViews(c.packageName, R.layout.widget_compact)
         val h = Store.head(c)
         v.setOnClickPendingIntent(R.id.root, if (Store.config(c) == null) openSetup(c) else openApp(c, ""))
-        v.setOnClickPendingIntent(R.id.add_expense, openApp(c, "#add/expense"))
-        v.setOnClickPendingIntent(R.id.add_income, openApp(c, "#add/income"))
+        // Монету прибрали з Марнотрату — повертаються «−» і «+», а не порожня плитка
+        val cat = coinOf(c, id, h).takeUnless { it.second }?.first
+        v.setViewVisibility(R.id.buttons, if (cat == null) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.coin_box, if (cat == null) View.GONE else View.VISIBLE)
+        if (cat == null) {
+            v.setOnClickPendingIntent(R.id.add_expense, openApp(c, "#add/expense"))
+            v.setOnClickPendingIntent(R.id.add_income, openApp(c, "#add/income"))
+        } else {
+            val (light, dark) = CoinArt.icons(c, cat, QUICK_COIN_DP, badge = true)
+            v.setIcon(R.id.coin, "setImageIcon", light, dark)
+            v.setTextViewText(R.id.coin_name, cat.name)
+            v.setContentDescription(R.id.coin_box, "Записати витрату: ${cat.name}")
+            v.setOnClickPendingIntent(R.id.coin_box, openApp(c, "#add/" + Uri.encode(cat.id)))
+        }
         // Окремої кнопки ⟳ немає місця — оновлює тап по рядку зі смужкою
         v.setOnClickPendingIntent(R.id.status_row, refresh(c, CompactWidget::class.java))
         staleStamp(c, v, h)
@@ -137,12 +152,8 @@ object Widgets {
      */
     fun quick(c: Context, id: Int): RemoteViews {
         val v = RemoteViews(c.packageName, R.layout.widget_quick)
-        val saved = Store.quick(c, id)
-        val head = Store.head(c)
-        val live = saved?.let { s -> head?.cats?.firstOrNull { it.id == s.id } }
-        // Сервер шле монети, а цієї серед них нема — її видалили чи сховали в архів
-        val gone = saved != null && live == null && head?.cats.orEmpty().isNotEmpty()
-        val cat = live ?: saved
+        val (cat, gone) = coinOf(c, id, Store.head(c))
+        val live = cat?.let { x -> Store.head(c)?.cats?.firstOrNull { it.id == x.id } }
         if (cat == null || gone) {
             v.setTextViewText(R.id.name, if (gone) "Немає монети" else "Обрати")
             v.setImageViewResource(R.id.coin, R.drawable.quick_pick)
@@ -156,6 +167,16 @@ object Widgets {
         v.setContentDescription(R.id.root, "Записати витрату: ${cat.name}" + if (live != null) ". ${catSpent(live)}" else "")
         v.setOnClickPendingIntent(R.id.root, openApp(c, "#add/" + Uri.encode(cat.id)))
         return v
+    }
+
+    /**
+     * Монета віджета (1×1 чи 4×1): свіжа з шапки, а без шапки — збережена при виборі. second — монету прибрали:
+     * сервер шле монети, а цієї серед них нема (видалили чи сховали в архів).
+     */
+    private fun coinOf(c: Context, id: Int, head: Head?): Pair<Head.Cat?, Boolean> {
+        val saved = Store.quick(c, id) ?: return null to false
+        val live = head?.cats?.firstOrNull { it.id == saved.id }
+        return (live ?: saved) to (live == null && head?.cats.orEmpty().isNotEmpty())
     }
 
     /** «3 200 з 8 000 грн», «3 200 грн» без бюджету, «цього місяця ще нічого». */

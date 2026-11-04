@@ -16,15 +16,21 @@ object CoinArt {
     // Частки діаметра — як у css: іконка 50 %, обідок «без бюджету» 4 px на монеті 70 px
     private const val ICON_SHARE = 0.5f
     private const val RING_SHARE = 4f / 70f
+    // Значок «+» на монеті 4×1: частка картинки й обвідка кольором підкладки, щоб не зливався з заливкою
+    private const val BADGE_SHARE = 0.4f
+    private const val BADGE_RING_DP = 2f
 
     /** Світла й темна — лаунчер сам бере потрібну, коли тема змінюється між оновленнями. */
-    fun icons(c: Context, cat: Head.Cat, sizeDp: Int): Pair<Icon, Icon> =
-        Icon.createWithBitmap(bitmap(themed(c, false), cat, sizeDp)) to Icon.createWithBitmap(bitmap(themed(c, true), cat, sizeDp))
+    fun icons(c: Context, cat: Head.Cat, sizeDp: Int, badge: Boolean = false): Pair<Icon, Icon> =
+        Icon.createWithBitmap(bitmap(themed(c, false), cat, sizeDp, badge)) to Icon.createWithBitmap(bitmap(themed(c, true), cat, sizeDp, badge))
 
-    fun bitmap(c: Context, cat: Head.Cat, sizeDp: Int): Bitmap {
-        val px = (sizeDp * c.resources.displayMetrics.density).toInt().coerceAtLeast(1)
-        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+    /** badge — зелений «+» унизу праворуч (віджет 4×1): монета трохи менша, щоб значок вліз у картинку. */
+    fun bitmap(c: Context, cat: Head.Cat, sizeDp: Int, badge: Boolean = false): Bitmap {
+        val d = c.resources.displayMetrics.density
+        val full = (sizeDp * d).toInt().coerceAtLeast(1)
+        val bmp = Bitmap.createBitmap(full, full, Bitmap.Config.ARGB_8888)
         val cv = Canvas(bmp)
+        val px = if (badge) (full * 0.9f).toInt() else full
         val r = px / 2f
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c.getColor(R.color.coin_empty) }
         cv.drawCircle(r, r, r, paint)
@@ -56,7 +62,26 @@ object CoinArt {
             ico.setBounds((r - half).toInt(), (r - half).toInt(), (r + half).toInt(), (r + half).toInt())
             ico.draw(cv)
         }
+        if (badge) drawBadge(c, cv, full, d)
         return bmp
+    }
+
+    private fun drawBadge(c: Context, cv: Canvas, full: Int, d: Float) {
+        val br = full * BADGE_SHARE / 2
+        val cx = full - br - BADGE_RING_DP * d / 2
+        val cy = cx
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        p.color = c.getColor(R.color.brand_soft)
+        cv.drawCircle(cx, cy, br + BADGE_RING_DP * d, p)
+        p.color = c.getColor(R.color.brand)
+        cv.drawCircle(cx, cy, br, p)
+        p.color = c.getColor(R.color.on_brand)
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = br * 0.22f
+        p.strokeCap = Paint.Cap.ROUND
+        val arm = br * 0.5f
+        cv.drawLine(cx - arm, cy, cx + arm, cy, p)
+        cv.drawLine(cx, cy - arm, cx, cy + arm, p)
     }
 
     fun themed(c: Context, night: Boolean): Context {

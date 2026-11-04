@@ -5,17 +5,21 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 
-/** 4×1: на день, сьогодні, баланс, платежі, смужка місяця, «−» витрата й «+» дохід. */
+/** 4×1: баланс, на день, сьогодні, платежі, смужка місяця; праворуч «−» і «+» або монета вибраної витрати. */
 class CompactWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        for (id in ids) manager.updateAppWidget(id, Widgets.compact(context))
+        for (id in ids) manager.updateAppWidget(id, Widgets.compact(context, id))
         Widgets.schedule(context)
     }
 
     override fun onEnabled(context: Context) {
         Widgets.schedule(context)
         Widgets.refreshNow(context)
+    }
+
+    override fun onDeleted(context: Context, ids: IntArray) {
+        Store.dropQuick(context, ids)
     }
 
     override fun onDisabled(context: Context) {

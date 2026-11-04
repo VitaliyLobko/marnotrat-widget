@@ -138,6 +138,7 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/buttons"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_marginStart="2dp"
@@ -154,5 +155,51 @@
             style="@style/WidgetButton.Compact"
             android:contentDescription="@string/add_income"
             android:src="@drawable/btn_income" />
+    </LinearLayout>
+
+    <!-- Замість «−» і «+» — монета вибраної витрати («Налаштувати» на віджеті) на м'якій підкладці:
+         заливка монети — бюджет, «+» — записати; тап — екран суми одразу в цю витрату -->
+    <LinearLayout
+        android:id="@+id/coin_box"
+        android:layout_width="72dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/coin_pill"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingStart="4dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="5dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/coin"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:importantForAccessibility="no"
+            android:maxHeight="46dp"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/coin_name"
+            android:layout_width="match_parent"
+            android:layout_height="14dp"
+            android:layout_marginTop="2dp"
+            android:autoSizeMaxTextSize="11sp"
+            android:autoSizeMinTextSize="8sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:importantForAccessibility="no"
+            android:maxLines="1"
+            android:textColor="@color/brand_text"
+            android:textSize="11sp" />
     </LinearLayout>
 </LinearLayout>
