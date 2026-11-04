@@ -220,7 +220,7 @@ class SetupActivity : Activity() {
         val plus = if (canPin) R.drawable.ic_plus_line else null
         return ui.card {
             // Спершу вибір того, що праворуч, потім віджет — лаунчер ставить уже готовий
-            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або 1–3 монети витрат (тап по крапках — наступна)", plus) {
+            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або 1–3 монети витрат (тап по смужці — наступна)", plus) {
                 startActivity(Intent(this@SetupActivity, QuickConfigActivity::class.java).putExtra(QuickConfigActivity.EXTRA_TARGET, QuickConfigActivity.TARGET_COMPACT))
             })
             addView(ui.divider())

@@ -80,7 +80,7 @@ object Store {
         prefs(c).edit().putString("quick:$widgetId", catsJson(cats)).remove("quickAt:$widgetId").apply()
     }
 
-    /** Котра з монет 4×1 зараз на віджеті (тап по крапках — наступна). */
+    /** Котра з монет 4×1 зараз на віджеті (тап по смужці — наступна). */
     fun quickAt(c: Context, widgetId: Int): Int = prefs(c).getInt("quickAt:$widgetId", 0)
 
     fun setQuickAt(c: Context, widgetId: Int, at: Int) {

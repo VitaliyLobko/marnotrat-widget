@@ -96,7 +96,7 @@ class QuickConfigActivity : Activity() {
                 compact -> {
                     addView(ui.caption("Або монети витрат — до трьох"))
                     addView(ui.text(
-                        if (picked.isEmpty()) "Тапни одну-три монети. Кілька — по черзі: тап по крапках біля монети — наступна, тап по монеті — екран суми."
+                        if (picked.isEmpty()) "Тапни одну-три монети. Кілька — по черзі: тап по смужці біля монети — наступна, тап по монеті — екран суми."
                         else "По черзі: " + picked.joinToString(" → ") { it.name } + ".",
                         14f, R.color.muted,
                     ).apply { setPadding(ui.dp(4f), 0, ui.dp(4f), 0) })

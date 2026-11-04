@@ -88,7 +88,7 @@ object Widgets {
     /**
      * 4×1: баланс крупно; на день, сьогодні, платежі — довідкою праворуч; смужка місяця; праворуч «−» витрата
      * й «+» дохід або монета вибраної витрати («Налаштувати» на віджеті).
-     * Дві-три монети — по одній, крапки ліворуч показують котра; тап по крапках — наступна, тап по монеті — екран суми.
+     * Дві-три монети — по одній, смужка ліворуч показує котра; тап по смужці — наступна, тап по монеті — екран суми.
      * picks — монети для прев'ю у вікні лаунчера «Додати на екран», поки номера віджета ще немає.
      */
     fun compact(c: Context, id: Int, picks: List<Head.Cat>? = null): RemoteViews {
@@ -98,7 +98,7 @@ object Widgets {
         val cats = picks ?: coinsOf(c, id, h)
         v.setViewVisibility(R.id.buttons, if (cats.isEmpty()) View.VISIBLE else View.GONE)
         v.setViewVisibility(R.id.coin_box, if (cats.isEmpty()) View.GONE else View.VISIBLE)
-        v.setViewVisibility(R.id.coin_dots, if (cats.size > 1) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.coin_strip, if (cats.size > 1) View.VISIBLE else View.GONE)
         if (cats.isEmpty()) {
             v.setOnClickPendingIntent(R.id.add_expense, openApp(c, "#add/expense"))
             v.setOnClickPendingIntent(R.id.add_income, openApp(c, "#add/income"))
@@ -110,17 +110,17 @@ object Widgets {
             v.setTextViewText(R.id.coin_name, cat.name)
             v.setContentDescription(R.id.coin_box, "Записати витрату: ${cat.name}")
             v.setOnClickPendingIntent(R.id.coin_box, openApp(c, "#add/" + Uri.encode(cat.id)))
-            // Поруч із крапками підкладка ближче — інакше між ними порожня щілина
-            v.setViewLayoutMargin(R.id.coin_box, RemoteViews.MARGIN_START, if (cats.size > 1) 4f else 10f, TypedValue.COMPLEX_UNIT_DIP)
+            // Поруч зі смужкою підкладка ближче — інакше між ними порожня щілина
+            v.setViewLayoutMargin(R.id.coin_box, RemoteViews.MARGIN_START, if (cats.size > 1) 2f else 10f, TypedValue.COMPLEX_UNIT_DIP)
             if (cats.size > 1) {
-                val dots = intArrayOf(R.id.dot1, R.id.dot2, R.id.dot3)
-                dots.forEachIndexed { i, dot ->
-                    v.setViewVisibility(dot, if (i < cats.size) View.VISIBLE else View.GONE)
-                    v.setImageViewResource(dot, if (i == at) R.drawable.dot_on else R.drawable.dot_off)
+                val segs = intArrayOf(R.id.seg1, R.id.seg2, R.id.seg3)
+                segs.forEachIndexed { i, seg ->
+                    v.setViewVisibility(seg, if (i < cats.size) View.VISIBLE else View.GONE)
+                    v.setImageViewResource(seg, if (i == at) R.drawable.seg_on else R.drawable.seg_off)
                 }
                 val next = cats[(at + 1) % cats.size]
-                v.setContentDescription(R.id.coin_dots, "Монета ${at + 1} з ${cats.size}. Наступна: ${next.name}")
-                v.setOnClickPendingIntent(R.id.coin_dots, nextCoin(c, id))
+                v.setContentDescription(R.id.coin_strip, "Монета ${at + 1} з ${cats.size}. Наступна: ${next.name}")
+                v.setOnClickPendingIntent(R.id.coin_strip, nextCoin(c, id))
             }
         }
         // Окремої кнопки ⟳ немає місця — оновлює тап по рядку зі смужкою
@@ -183,7 +183,7 @@ object Widgets {
     // Монета 1×1 малюється з запасом: лаунчер вписує картинку в клітинку сам (fitCenter)
     private const val QUICK_COIN_DP = 72
 
-    /** Тап по крапках 4×1 — наступна монета; номер віджета в намірі, бо 4×1 може бути кілька. */
+    /** Тап по смужці 4×1 — наступна монета; номер віджета в намірі, бо 4×1 може бути кілька. */
     private fun nextCoin(c: Context, id: Int): PendingIntent {
         val intent = Intent(c, CompactWidget::class.java).setAction(ACTION_NEXT_COIN).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
         return PendingIntent.getBroadcast(c, 20_000 + id, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
