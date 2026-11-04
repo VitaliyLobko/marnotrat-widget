@@ -26,6 +26,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Швидкий запис витрати з віджета: окреме завдання без сліду в «Недавніх», клавіатура піднімає шторку -->
+        <activity
+            android:name=".QuickAddActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Marnotrat.Sheet"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
+
         <!-- Вибір монети для 1×1: лаунчер відкриває його при додаванні й «Налаштувати» — тому exported -->
         <activity
             android:name=".QuickConfigActivity"

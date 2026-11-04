@@ -80,11 +80,32 @@ object Store {
         prefs(c).edit().putString("quick:$widgetId", catsJson(cats)).remove("quickAt:$widgetId").apply()
     }
 
-    /** Котра з монет 4×1 зараз на віджеті (тап по смужці — наступна). */
+    /** Котра з монет 4×1 зараз на віджеті (тап по сегменту смужки — саме ця). */
     fun quickAt(c: Context, widgetId: Int): Int = prefs(c).getInt("quickAt:$widgetId", 0)
 
     fun setQuickAt(c: Context, widgetId: Int, at: Int) {
         prefs(c).edit().putInt("quickAt:$widgetId", at).apply()
+    }
+
+    /**
+     * Витрати з вікна швидкого запису, ще не відправлені на сервер: записи /api/records (store ops).
+     * Без зв'язку чекають тут; RefreshWorker відправляє й прибирає лише ті, що сервер прийняв.
+     */
+    fun pending(c: Context): List<JSONObject> = runCatching {
+        val a = JSONArray(prefs(c).getString("pending", "[]"))
+        (0 until a.length()).map { a.getJSONObject(it) }
+    }.getOrDefault(emptyList())
+
+    @Synchronized
+    fun enqueue(c: Context, rec: JSONObject) {
+        val a = JSONArray().apply { for (r in pending(c)) put(r); put(rec) }
+        prefs(c).edit().putString("pending", a.toString()).commit()
+    }
+
+    @Synchronized
+    fun dropPending(c: Context, ids: Set<String>) {
+        val a = JSONArray().apply { for (r in pending(c)) if (r.optString("id") !in ids) put(r) }
+        prefs(c).edit().putString("pending", a.toString()).commit()
     }
 
     /** Остання версія застосунку на GitHub і коли перевіряли — «Є нова версія» на екрані підключення. */

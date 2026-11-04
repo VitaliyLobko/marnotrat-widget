@@ -31,7 +31,8 @@ object Widgets {
     const val ACTION_REFRESH = "ua.vitaliylobko.marnotrat.widget.REFRESH"
     const val ACTION_PINNED = "ua.vitaliylobko.marnotrat.widget.QUICK_PINNED"
     const val EXTRA_CAT = "cat"
-    const val ACTION_NEXT_COIN = "ua.vitaliylobko.marnotrat.widget.NEXT_COIN"
+    const val ACTION_PICK_COIN = "ua.vitaliylobko.marnotrat.widget.PICK_COIN"
+    const val EXTRA_AT = "at"
     private const val APP_URL = "https://vitaliylobko.github.io/marnotrat/"
 
     // Шапка старша за 3 години — час з датою й помаранчевим: цифри могли змінитися
@@ -88,7 +89,7 @@ object Widgets {
     /**
      * 4×1: баланс крупно; на день, сьогодні, платежі — довідкою праворуч; смужка місяця; праворуч «−» витрата
      * й «+» дохід або монета вибраної витрати («Налаштувати» на віджеті).
-     * Дві-три монети — по одній, смужка ліворуч показує котра; тап по смужці — наступна, тап по монеті — екран суми.
+     * Дві-три монети — по одній, смужка ліворуч: тап по сегменту — саме ця монета; тап по монеті — вікно швидкого запису.
      * picks — монети для прев'ю у вікні лаунчера «Додати на екран», поки номера віджета ще немає.
      */
     fun compact(c: Context, id: Int, picks: List<Head.Cat>? = null): RemoteViews {
@@ -109,18 +110,19 @@ object Widgets {
             v.setIcon(R.id.coin, "setImageIcon", light, dark)
             v.setTextViewText(R.id.coin_name, cat.name)
             v.setContentDescription(R.id.coin_box, "Записати витрату: ${cat.name}")
-            v.setOnClickPendingIntent(R.id.coin_box, openApp(c, "#add/" + Uri.encode(cat.id)))
+            v.setOnClickPendingIntent(R.id.coin_box, quickAdd(c, cat))
             // Поруч зі смужкою підкладка ближче — інакше між ними порожня щілина
             v.setViewLayoutMargin(R.id.coin_box, RemoteViews.MARGIN_START, if (cats.size > 1) 2f else 10f, TypedValue.COMPLEX_UNIT_DIP)
             if (cats.size > 1) {
                 val segs = intArrayOf(R.id.seg1, R.id.seg2, R.id.seg3)
+                val bars = intArrayOf(R.id.bar1, R.id.bar2, R.id.bar3)
                 segs.forEachIndexed { i, seg ->
                     v.setViewVisibility(seg, if (i < cats.size) View.VISIBLE else View.GONE)
-                    v.setImageViewResource(seg, if (i == at) R.drawable.seg_on else R.drawable.seg_off)
+                    if (i >= cats.size) return@forEachIndexed
+                    v.setImageViewResource(bars[i], if (i == at) R.drawable.seg_on else R.drawable.seg_off)
+                    v.setContentDescription(seg, (if (i == at) "Зараз: " else "Показати: ") + cats[i].name)
+                    v.setOnClickPendingIntent(seg, pickCoin(c, id, i))
                 }
-                val next = cats[(at + 1) % cats.size]
-                v.setContentDescription(R.id.coin_strip, "Монета ${at + 1} з ${cats.size}. Наступна: ${next.name}")
-                v.setOnClickPendingIntent(R.id.coin_strip, nextCoin(c, id))
             }
         }
         // Окремої кнопки ⟳ немає місця — оновлює тап по рядку зі смужкою
@@ -183,21 +185,42 @@ object Widgets {
     // Монета 1×1 малюється з запасом: лаунчер вписує картинку в клітинку сам (fitCenter)
     private const val QUICK_COIN_DP = 72
 
-    /** Тап по смужці 4×1 — наступна монета; номер віджета в намірі, бо 4×1 може бути кілька. */
-    private fun nextCoin(c: Context, id: Int): PendingIntent {
-        val intent = Intent(c, CompactWidget::class.java).setAction(ACTION_NEXT_COIN).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
-        return PendingIntent.getBroadcast(c, 20_000 + id, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    /** Тап по сегменту смужки 4×1 — саме ця монета; номер віджета й сегмента в намірі (4×1 може бути кілька). */
+    private fun pickCoin(c: Context, id: Int, at: Int): PendingIntent {
+        val intent = Intent(c, CompactWidget::class.java).setAction(ACTION_PICK_COIN)
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra(EXTRA_AT, at)
+        return PendingIntent.getBroadcast(c, 20_000 + id * 4 + at, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
-    /** Наступна монета 4×1 — і запам'ятати: після оновлення цифр лишається та сама. */
-    fun nextCoin(c: Context, intent: Intent) {
-        if (intent.action != ACTION_NEXT_COIN) return
+    /** Показати вибрану монету 4×1 — і запам'ятати: після оновлення цифр лишається та сама. */
+    fun pickCoin(c: Context, intent: Intent) {
+        if (intent.action != ACTION_PICK_COIN) return
         val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
         if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
         val n = coinsOf(c, id, Store.head(c)).size
-        if (n < 2) return
-        Store.setQuickAt(c, id, (Store.quickAt(c, id) + 1) % n)
+        val at = intent.getIntExtra(EXTRA_AT, 0)
+        if (at !in 0 until n) return
+        Store.setQuickAt(c, id, at)
         updateCompact(c, AppWidgetManager.getInstance(c), id)
+    }
+
+    /** Монета на віджеті → вікно швидкого запису (QuickAddActivity), не весь Марнотрат. */
+    private fun quickAdd(c: Context, cat: Head.Cat): PendingIntent {
+        val intent = Intent(c, QuickAddActivity::class.java).putExtra(QuickAddActivity.EXTRA_CAT_ID, cat.id)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        return PendingIntent.getActivity(c, ("add:" + cat.id).hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
+    /** Екран суми в Марнотраті — з вікна швидкого запису («Більше»), коли тут записати не вийде. */
+    fun openAdd(c: Context, catId: String): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse(APP_URL + "#add/" + Uri.encode(catId))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    /** «грн», «$», «€» — як підписи в Марнотраті. */
+    fun unit(cur: String): String = when (cur) {
+        "UAH" -> "грн"
+        "USD" -> "$"
+        "EUR" -> "€"
+        else -> cur
     }
 
     /**
@@ -230,7 +253,7 @@ object Widgets {
         v.setIcon(R.id.coin, "setImageIcon", light, dark)
         v.setTextViewText(R.id.name, cat.name)
         v.setContentDescription(R.id.root, "Записати витрату: ${cat.name}" + if (live != null) ". ${catSpent(live)}" else "")
-        v.setOnClickPendingIntent(R.id.root, openApp(c, "#add/" + Uri.encode(cat.id)))
+        v.setOnClickPendingIntent(R.id.root, quickAdd(c, cat))
         return v
     }
 
@@ -246,12 +269,7 @@ object Widgets {
 
     /** «3 200 з 8 000 грн», «3 200 грн» без бюджету, «цього місяця ще нічого». */
     fun catSpent(cat: Head.Cat): String {
-        val unit = when (cat.cur) {
-            "UAH" -> "грн"
-            "USD" -> "$"
-            "EUR" -> "€"
-            else -> cat.cur
-        }
+        val unit = unit(cat.cur)
         return when {
             cat.spent <= 0 && cat.budget > 0 -> "цього місяця ще нічого · бюджет ${num(cat.budget)} $unit"
             cat.spent <= 0 -> "цього місяця ще нічого"

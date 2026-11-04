@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Клавіша суми у вікні швидкого запису -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/line">
+    <item>
+        <shape>
+            <solid android:color="@color/surface2" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</ripple>

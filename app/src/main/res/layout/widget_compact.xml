@@ -157,48 +157,70 @@
             android:src="@drawable/btn_income" />
     </LinearLayout>
 
-    <!-- Дві-три монети: вертикальна смужка з сегментів — котра зараз; тап по смужці — наступна.
+    <!-- Дві-три монети: вертикальна смужка, сегмент на монету — тап по сегменту вмикає саме її.
          Свайп не годиться: ні Nova, ні лаунчер Samsung не віддають його віджету -->
     <LinearLayout
         android:id="@+id/coin_strip"
-        android:layout_width="28dp"
+        android:layout_width="36dp"
         android:layout_height="match_parent"
-        android:layout_marginStart="4dp"
-        android:background="@drawable/row_press"
-        android:gravity="center_horizontal"
+        android:layout_marginStart="2dp"
         android:orientation="vertical"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:visibility="gone">
 
-        <ImageView
+        <FrameLayout
             android:id="@+id/seg1"
-            android:layout_width="6dp"
+            android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:importantForAccessibility="no"
-            android:scaleType="fitXY"
-            android:src="@drawable/seg_on" />
+            android:background="@drawable/row_press">
 
-        <ImageView
+            <ImageView
+                android:id="@+id/bar1"
+                android:layout_width="8dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_horizontal"
+                android:importantForAccessibility="no"
+                android:scaleType="fitXY"
+                android:src="@drawable/seg_on" />
+        </FrameLayout>
+
+        <FrameLayout
             android:id="@+id/seg2"
-            android:layout_width="6dp"
+            android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="4dp"
             android:layout_weight="1"
-            android:importantForAccessibility="no"
-            android:scaleType="fitXY"
-            android:src="@drawable/seg_off" />
+            android:layout_marginTop="4dp"
+            android:background="@drawable/row_press">
 
-        <ImageView
+            <ImageView
+                android:id="@+id/bar2"
+                android:layout_width="8dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_horizontal"
+                android:importantForAccessibility="no"
+                android:scaleType="fitXY"
+                android:src="@drawable/seg_off" />
+        </FrameLayout>
+
+        <FrameLayout
             android:id="@+id/seg3"
-            android:layout_width="6dp"
+            android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="4dp"
             android:layout_weight="1"
-            android:importantForAccessibility="no"
-            android:scaleType="fitXY"
-            android:src="@drawable/seg_off" />
+            android:layout_marginTop="4dp"
+            android:background="@drawable/row_press">
+
+            <ImageView
+                android:id="@+id/bar3"
+                android:layout_width="8dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_horizontal"
+                android:importantForAccessibility="no"
+                android:scaleType="fitXY"
+                android:src="@drawable/seg_off" />
+        </FrameLayout>
     </LinearLayout>
 
     <!-- Замість «−» і «+» — монета вибраної витрати («Налаштувати» на віджеті) на м'якій підкладці:

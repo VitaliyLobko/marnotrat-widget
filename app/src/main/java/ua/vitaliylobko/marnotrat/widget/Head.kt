@@ -35,7 +35,11 @@ data class Head(
         val budget: Double,
         val st: String,
         val fill: Double,
+        // Рахунок для швидкої витрати (сервер рахує як pairInto Марнотрату); старий сервер — null
+        val acc: Acc? = null,
     )
+
+    data class Acc(val id: String, val name: String, val cur: String)
 
     val daysLeft: Int get() = (days - day + 1).coerceAtLeast(0)
 
@@ -79,6 +83,9 @@ data class Head(
             budget = o.optDouble("budget", 0.0),
             st = o.optString("st", "zero"),
             fill = o.optDouble("fill", 0.0),
+            acc = o.optJSONObject("acc")?.let { a ->
+                Acc(a.optString("id"), a.optString("name"), a.optString("cur", "UAH")).takeIf { it.id.isNotEmpty() }
+            },
         )
     }
 }
