@@ -15,4 +15,10 @@
     <color name="track">#E9ECEF</color>
     <color name="inc_bg">#E3F5FC</color>
     <color name="inc_text">#1679A3</color>
+    <!-- монета витрати (віджет 1×1): як .coin-face у Марнотраті -->
+    <color name="coin_empty">#C3C5C9</color>
+    <color name="coin_ico">#FFFFFF</color>
+    <color name="coin_ok">#10CF8E</color>
+    <color name="coin_warn">#FF8A00</color>
+    <color name="coin_over">#E53935</color>
 </resources>

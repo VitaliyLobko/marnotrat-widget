@@ -18,7 +18,25 @@ data class Head(
     val plannedN: Int,
     /** Сім днів, останній — сьогодні: дата (yyyy-MM-dd) і витрати за день. */
     val week: List<Pair<String, Double>>,
+    /** Найближчий регулярний платіж до кінця періоду (прострочений теж) або null. */
+    val next: Next?,
+    /** Монети витрат за порядком на головній — для віджета 1×1. Старий сервер їх не шле — порожньо. */
+    val cats: List<Cat>,
 ) {
+    data class Next(val date: String, val name: String, val v: Double)
+
+    /** Монета витрати: витрачено й бюджет — у валюті монети; st — колір (zero, free, ok, warn, over), fill — заливка 0–1. */
+    data class Cat(
+        val id: String,
+        val name: String,
+        val icon: String,
+        val cur: String,
+        val spent: Double,
+        val budget: Double,
+        val st: String,
+        val fill: Double,
+    )
+
     val daysLeft: Int get() = (days - day + 1).coerceAtLeast(0)
 
     /** Норма на сьогодні, як її рахувало б зранку: perDay уже зменшений на сьогоднішні витрати. */
@@ -46,6 +64,21 @@ data class Head(
                     a.optJSONObject(i)?.let { it.optString("date") to it.optDouble("v", 0.0) }
                 }
             } ?: emptyList(),
+            next = o.optJSONObject("next")?.let { Next(it.optString("date"), it.optString("name"), it.optDouble("v", 0.0)) },
+            cats = o.optJSONArray("cats")?.let { a ->
+                (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let(::cat) }
+            } ?: emptyList(),
+        )
+
+        fun cat(o: JSONObject) = Cat(
+            id = o.optString("id"),
+            name = o.optString("name"),
+            icon = o.optString("icon"),
+            cur = o.optString("cur", "UAH"),
+            spent = o.optDouble("spent", 0.0),
+            budget = o.optDouble("budget", 0.0),
+            st = o.optString("st", "zero"),
+            fill = o.optDouble("fill", 0.0),
         )
     }
 }

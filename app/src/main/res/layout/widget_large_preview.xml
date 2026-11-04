@@ -73,11 +73,53 @@
         android:scaleType="fitCenter"
         android:src="@drawable/preview_week" />
 
+    <!-- Місяць: заливка — витрачено з бюджету, проріз — скільки минуло; праворуч скільки лишилось -->
+    <LinearLayout
+        android:id="@+id/month_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/bars"
+            android:layout_width="0dp"
+            android:layout_height="13dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1">
+
+            <ProgressBar
+                android:id="@+id/bar_ok"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:max="1000"
+                android:progress="710"
+                android:progressDrawable="@drawable/bar_ok"
+                android:secondaryProgress="630" />
+
+            <ProgressBar
+                android:id="@+id/bar_over"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:max="1000"
+                android:progressDrawable="@drawable/bar_over"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/pace"
+            style="@style/WidgetNote"
+            android:text="лишилось 8 600 · 12 днів" />
+    </LinearLayout>
+
     <LinearLayout
         android:id="@+id/status_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
         android:gravity="center_vertical"
         android:minHeight="32dp"
         android:orientation="horizontal">
@@ -91,7 +133,7 @@
 
         <TextView
             android:id="@+id/rest"
-            android:text="  ·  в планах 2 100  ·  ще 12 днів"
+            android:text="  ·  далі Інтернет 300 завтра"
             style="@style/WidgetNote"
             android:layout_width="0dp"
             android:layout_height="16dp"

@@ -3,13 +3,16 @@
     <string name="app_name">Віджет Марнотрату</string>
     <string name="widget_compact">Марнотрат · коротко</string>
     <string name="widget_large">Марнотрат · день і тиждень</string>
+    <string name="widget_quick">Марнотрат · швидка витрата</string>
     <string name="widget_compact_desc">На день, сьогодні, баланс і заплановане</string>
     <string name="widget_large_desc">Скільки можна на день і витрати за тиждень</string>
+    <string name="widget_quick_desc">Монета однієї витрати: тап — одразу екран суми</string>
+    <string name="quick_pick">Обрати</string>
     <string name="per_day">На день</string>
     <string name="balance">Баланс</string>
     <string name="expense">Витрати</string>
     <string name="today">Сьогодні</string>
-    <string name="planned">В планах</string>
+    <string name="planned">Платежі</string>
     <string name="add_expense">Витрата</string>
     <string name="add_income">Дохід</string>
     <string name="refresh">Оновити</string>

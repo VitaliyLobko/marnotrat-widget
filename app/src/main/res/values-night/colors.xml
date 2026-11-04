@@ -14,4 +14,9 @@
     <color name="track">#30353C</color>
     <color name="inc_bg">#1D3A47</color>
     <color name="inc_text">#8FD8F5</color>
+    <color name="coin_empty">#6E737B</color>
+    <color name="coin_ico">#121417</color>
+    <color name="coin_ok">#138A62</color>
+    <color name="coin_warn">#CC6E00</color>
+    <color name="coin_over">#B8302B</color>
 </resources>

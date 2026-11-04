@@ -39,6 +39,22 @@ object Store {
         prefs(c).edit().putLong("unlock", at).apply()
     }
 
+    /**
+     * Монета віджета 1×1. Разом з id — назва й іконка на момент вибору: віджет малюється й тоді,
+     * коли шапки ще немає чи сервер старий і монет не шле.
+     */
+    fun quick(c: Context, widgetId: Int): Head.Cat? =
+        prefs(c).getString("quick:$widgetId", null)?.let { runCatching { Head.cat(JSONObject(it)) }.getOrNull() }
+
+    fun setQuick(c: Context, widgetId: Int, cat: Head.Cat) {
+        val o = JSONObject().put("id", cat.id).put("name", cat.name).put("icon", cat.icon).put("cur", cat.cur)
+        prefs(c).edit().putString("quick:$widgetId", o.toString()).apply()
+    }
+
+    fun dropQuick(c: Context, widgetIds: IntArray) {
+        prefs(c).edit().apply { for (id in widgetIds) remove("quick:$id") }.apply()
+    }
+
     fun busy(c: Context): Boolean = prefs(c).getBoolean("busy", false)
 
     fun setBusy(c: Context, on: Boolean) {

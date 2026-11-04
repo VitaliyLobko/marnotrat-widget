@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Монету вибирають після додавання (configure); configuration_optional — лаунчер може не відкривати вибір одразу:
+     тоді на віджеті «Обрати», тап відкриває той самий вибір. reconfigurable — змінити монету довгим натисканням -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="ua.vitaliylobko.marnotrat.widget.QuickConfigActivity"
+    android:description="@string/widget_quick_desc"
+    android:initialLayout="@layout/widget_quick"
+    android:previewLayout="@layout/widget_quick_preview"
+    android:minWidth="40dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable|configuration_optional" />

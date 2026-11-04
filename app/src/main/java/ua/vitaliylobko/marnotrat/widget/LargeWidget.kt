@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 
-/** 4×2: скільки можна на день, стовпчики тижня з нормою, сьогодні · баланс · в планах, «−» і «+». */
+/** 4×2: баланс і на день, стовпчики тижня з нормою, смужка місяця, сьогодні · наступний платіж, «−» і «+». */
 class LargeWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {

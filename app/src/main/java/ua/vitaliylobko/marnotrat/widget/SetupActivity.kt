@@ -108,6 +108,8 @@ class SetupActivity : Activity() {
         if (m.isRequestPinAppWidgetSupported) {
             button("Додати віджет 4×1") { m.requestPinAppWidget(ComponentName(this, CompactWidget::class.java), null, null) }
             button("Додати віджет 4×2") { m.requestPinAppWidget(ComponentName(this, LargeWidget::class.java), null, null) }
+            // Спершу монета, потім віджет: так лаунчер ставить уже готовий, без кроку «Обрати»
+            button("Швидка витрата 1×1") { startActivity(Intent(this, QuickConfigActivity::class.java)) }
         }
         button("Оновити зараз") { Widgets.refreshNow(this) }
         line("")

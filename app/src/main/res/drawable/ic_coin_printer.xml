@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Згенеровано scripts/make_icons.py з іконок Марнотрату — руками не правити -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 6 18 H 4 a 2 2 0 0 1 -2 -2 v -5 a 2 2 0 0 1 2 -2 h 16 a 2 2 0 0 1 2 2 v 5 a 2 2 0 0 1 -2 2 h -2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 6 9 V 3 a 1 1 0 0 1 1 -1 h 10 a 1 1 0 0 1 1 1 v 6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M7 14 H17 A1 1 0 0 1 18 15 V21 A1 1 0 0 1 17 22 H7 A1 1 0 0 1 6 21 V15 A1 1 0 0 1 7 14 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+</vector>

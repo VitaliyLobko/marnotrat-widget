@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Превью 1×1: зелена монета з кошиком (білі лінії згенерованої іконки) -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="72dp"
+        android:height="72dp">
+        <shape android:shape="oval">
+            <solid android:color="@color/coin_ok" />
+        </shape>
+    </item>
+    <item
+        android:width="36dp"
+        android:height="36dp"
+        android:drawable="@drawable/ic_coin_shopping_basket"
+        android:gravity="center" />
+</layer-list>

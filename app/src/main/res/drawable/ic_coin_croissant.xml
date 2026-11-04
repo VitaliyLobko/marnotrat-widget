@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Згенеровано scripts/make_icons.py з іконок Марнотрату — руками не правити -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="m 4.6 13.11 5.79 -3.21 c 1.89 -1.05 4.79 1.78 3.71 3.71 l -3.22 5.81 C 8.8 23.16 .79 15.23 4.6 13.11 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="m 10.5 9.5 -1 -2.29 C 9.2 6.48 8.8 6 8 6 H 4.5 C 2.79 6 2 6.5 2 8.5 a 7.71 7.71 0 0 0 2 4.83"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 8 6 c 0 -1.55 .24 -4 -2 -4 -2 0 -2.5 2.17 -2.5 4"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="m 14.5 13.5 2.29 1 c .73 .3 1.21 .7 1.21 1.5 v 3.5 c 0 1.71 -.5 2.5 -2.5 2.5 a 7.71 7.71 0 0 1 -4.83 -2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 18 16 c 1.55 0 4 -.24 4 2 0 2 -2.17 2.5 -4 2.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+</vector>

@@ -47,7 +47,8 @@ object Widgets {
     }
 
     fun any(c: Context): Boolean =
-        ids(c, CompactWidget::class.java).isNotEmpty() || ids(c, LargeWidget::class.java).isNotEmpty()
+        ids(c, CompactWidget::class.java).isNotEmpty() || ids(c, LargeWidget::class.java).isNotEmpty() ||
+            ids(c, QuickWidget::class.java).isNotEmpty()
 
     fun cancelIfNone(c: Context) {
         if (!any(c)) WorkManager.getInstance(c).cancelUniqueWork("refresh")
@@ -57,12 +58,13 @@ object Widgets {
         val m = AppWidgetManager.getInstance(c)
         for (id in ids(c, CompactWidget::class.java)) m.updateAppWidget(id, compact(c))
         for (id in ids(c, LargeWidget::class.java)) m.updateAppWidget(id, large(c, m, id))
+        for (id in ids(c, QuickWidget::class.java)) m.updateAppWidget(id, quick(c, id))
     }
 
     private fun ids(c: Context, cls: Class<*>): IntArray =
         AppWidgetManager.getInstance(c).getAppWidgetIds(ComponentName(c, cls))
 
-    /** 4×1: баланс крупно; на день, сьогодні, в планах — довідкою праворуч; смужка місяця; «−» витрата й «+» дохід. */
+    /** 4×1: баланс крупно; на день, сьогодні, платежі — довідкою праворуч; смужка місяця; «−» витрата й «+» дохід. */
     fun compact(c: Context): RemoteViews {
         val v = RemoteViews(c.packageName, R.layout.widget_compact)
         val h = Store.head(c)
@@ -81,18 +83,18 @@ object Widgets {
         v.setTextViewText(R.id.today_v, num(h.today))
         v.setTextViewText(R.id.plan_v, num(h.planned))
         bars(v, h)
-        v.setTextViewText(
-            R.id.pace,
-            when {
-                h.plan <= 0 -> "бюджетів не задано"
-                h.left < 0 -> "бюджет вичерпано · ${days(h.daysLeft)}"
-                else -> "лишилось ${num(h.left)} · ${days(h.daysLeft)}"
-            },
-        )
+        v.setTextViewText(R.id.pace, pace(h))
         return v
     }
 
-    /** 4×2: баланс і скільки можна на день, стовпчики тижня з нормою, сьогодні · в планах. */
+    /** Під смужкою місяця: скільки лишилось з бюджетів і днів, як «Лишилось» у шапці Марнотрату. */
+    private fun pace(h: Head): String = when {
+        h.plan <= 0 -> "бюджетів не задано"
+        h.left < 0 -> "бюджет вичерпано · ${days(h.daysLeft)}"
+        else -> "лишилось ${num(h.left)} · ${days(h.daysLeft)}"
+    }
+
+    /** 4×2: баланс і скільки можна на день, стовпчики тижня з нормою, смужка місяця, сьогодні · наступний платіж. */
     fun large(c: Context, m: AppWidgetManager, id: Int): RemoteViews {
         val v = RemoteViews(c.packageName, R.layout.widget_large)
         val h = Store.head(c)
@@ -104,22 +106,79 @@ object Widgets {
         stamp(c, v, h)
         if (h == null) {
             v.setTextViewText(R.id.rest, Store.error(c) ?: if (Store.config(c) == null) "Підключи в Марнотраті → Налаштування" else "")
+            v.setViewVisibility(R.id.month_row, View.GONE)
             return v
         }
         // Розмір віджета в dp з налаштувань лаунчера (у портреті — мінімальна ширина й максимальна висота);
-        // під діаграму — висота мінус рядок зверху (54 dp), рядок знизу (32 dp), відступи й проміжки (36 dp)
+        // під діаграму — висота мінус рядок зверху (54 dp), смужка місяця (20 dp), рядок знизу (32 dp),
+        // відступи й проміжки (36 dp)
         val o = m.getAppWidgetOptions(id)
         val wDp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH).takeIf { it > 0 } ?: 320
         val hDp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).takeIf { it > 0 } ?: 180
         // На вузькому «грн» поступається місцем самому балансу
         head(c, v, h, short = false, unit = wDp >= 300)
         v.setTextViewText(R.id.today_v, "${c.getString(R.string.today)} ${num(h.today)}")
-        val rest = "  ·  ${c.getString(R.string.planned).lowercase()} ${num(h.planned)}"
-        v.setTextViewText(R.id.rest, if (h.plan > 0) "$rest  ·  ще ${days(h.daysLeft)}" else rest)
-        val (light, dark) = WeekChart.icons(c, h, wDp - 27, (hDp - 122).coerceIn(40, 240))
+        v.setTextViewText(R.id.rest, nextPayment(h))
+        v.setViewVisibility(R.id.month_row, View.VISIBLE)
+        bars(v, h)
+        v.setTextViewText(R.id.pace, pace(h))
+        val (light, dark) = WeekChart.icons(c, h, wDp - 27, (hDp - 142).coerceIn(40, 240))
         v.setIcon(R.id.chart, "setImageIcon", light, dark)
         v.setContentDescription(R.id.chart, WeekChart.describe(h))
         return v
+    }
+
+    // Монета 1×1 малюється з запасом: лаунчер вписує картинку в клітинку сам (fitCenter)
+    private const val QUICK_COIN_DP = 72
+
+    /**
+     * 1×1: монета витрати й назва. Колір монети — свіжий із шапки; монети вже нема на сервері чи її ще не вибрано —
+     * тап відкриває вибір, а не екран суми.
+     */
+    fun quick(c: Context, id: Int): RemoteViews {
+        val v = RemoteViews(c.packageName, R.layout.widget_quick)
+        val saved = Store.quick(c, id)
+        val head = Store.head(c)
+        val live = saved?.let { s -> head?.cats?.firstOrNull { it.id == s.id } }
+        // Сервер шле монети, а цієї серед них нема — її видалили чи сховали в архів
+        val gone = saved != null && live == null && head?.cats.orEmpty().isNotEmpty()
+        val cat = live ?: saved
+        if (cat == null || gone) {
+            v.setTextViewText(R.id.name, if (gone) "Немає монети" else "Обрати")
+            v.setImageViewResource(R.id.coin, R.drawable.quick_pick)
+            v.setContentDescription(R.id.root, "Швидка витрата: обрати монету")
+            v.setOnClickPendingIntent(R.id.root, configure(c, id))
+            return v
+        }
+        val (light, dark) = CoinArt.icons(c, cat, QUICK_COIN_DP)
+        v.setIcon(R.id.coin, "setImageIcon", light, dark)
+        v.setTextViewText(R.id.name, cat.name)
+        v.setContentDescription(R.id.root, "Записати витрату: ${cat.name}" + if (live != null) ". ${catSpent(live)}" else "")
+        v.setOnClickPendingIntent(R.id.root, openApp(c, "#add/" + Uri.encode(cat.id)))
+        return v
+    }
+
+    /** «3 200 з 8 000 грн», «3 200 грн» без бюджету, «цього місяця ще нічого». */
+    fun catSpent(cat: Head.Cat): String {
+        val unit = when (cat.cur) {
+            "UAH" -> "грн"
+            "USD" -> "$"
+            "EUR" -> "€"
+            else -> cat.cur
+        }
+        return when {
+            cat.spent <= 0 && cat.budget > 0 -> "цього місяця ще нічого · бюджет ${num(cat.budget)} $unit"
+            cat.spent <= 0 -> "цього місяця ще нічого"
+            cat.budget > 0 -> "${num(cat.spent)} з ${num(cat.budget)} $unit"
+            else -> "${num(cat.spent)} $unit"
+        }
+    }
+
+    private fun configure(c: Context, id: Int): PendingIntent {
+        val intent = Intent(c, QuickConfigActivity::class.java)
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return PendingIntent.getActivity(c, 10_000 + id, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
     /**
@@ -138,6 +197,25 @@ object Widgets {
         v.setTextViewText(R.id.c1_v, if (short || !unit) num(value) else money(value))
         v.setColorStateList(R.id.c1_v, "setTextColor", color)
         v.setColorStateList(R.id.today_v, "setTextColor", if (h.todayOver) R.color.warn_text else R.color.text)
+    }
+
+    /**
+     * Наступний регулярний платіж — що й коли спише, а не лише сума всіх: «далі Інтернет 300 завтра».
+     * Нема правил на цей період — нічого; старий сервер без next — сума, як було.
+     */
+    private fun nextPayment(h: Head): String {
+        val n = h.next ?: return if (h.planned > 0) "  ·  платежі ${num(h.planned)}" else ""
+        val today = java.time.LocalDate.now()
+        val date = runCatching { java.time.LocalDate.parse(n.date) }.getOrNull()
+        val whenText = when {
+            date == null -> ""
+            date.isBefore(today) -> " — не проведено"
+            date == today -> " сьогодні"
+            date == today.plusDays(1) -> " завтра"
+            else -> " " + date.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM"))
+        }
+        val more = if (h.plannedN > 1) " (ще ${h.plannedN - 1})" else ""
+        return "  ·  далі ${n.name} ${num(n.v)}$whenText$more"
     }
 
     /** «18 731 грн»: «грн» дрібніше — число читається першим. */
