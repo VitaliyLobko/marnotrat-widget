@@ -176,13 +176,25 @@ class QuickConfigActivity : Activity() {
         }
         // Прев'ю — лише з першою монетою: стопка з трьох — шість картинок (світла й темна), і запит до системи
         // перевищує ліміт Binder (~1 МБ) — віджет не ставиться. Не пройшло й так — просимо без прев'ю.
-        val extras = if (compact) Bundle().apply {
-            putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, Widgets.compact(this@QuickConfigActivity, AppWidgetManager.INVALID_APPWIDGET_ID, cats.take(1)))
-        } else null
+        val extras = if (compact) runCatching {
+            Bundle().apply {
+                putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, Widgets.compact(this@QuickConfigActivity, AppWidgetManager.INVALID_APPWIDGET_ID, cats.take(1)))
+            }
+        }.getOrNull() else null
         if (m.isRequestPinAppWidgetSupported) {
             val target = ComponentName(this, cls)
-            val ok = runCatching { m.requestPinAppWidget(target, extras, callback) }.getOrDefault(false)
-            if (!ok && extras != null) runCatching { m.requestPinAppWidget(target, null, callback) }
+            val first = runCatching { m.requestPinAppWidget(target, extras, callback) }
+            if (first.getOrDefault(false) != true && extras != null) {
+                val second = runCatching { m.requestPinAppWidget(target, null, callback) }
+                // Не вийшло й без прев'ю — показати причину, а не мовчки закритись
+                second.exceptionOrNull()?.let {
+                    Toast.makeText(this, "Не вдалося додати віджет: ${it.javaClass.simpleName} ${it.message.orEmpty()}", Toast.LENGTH_LONG).show()
+                    return
+                }
+            } else first.exceptionOrNull()?.let {
+                Toast.makeText(this, "Не вдалося додати віджет: ${it.javaClass.simpleName} ${it.message.orEmpty()}", Toast.LENGTH_LONG).show()
+                return
+            }
         }
         finish()
     }

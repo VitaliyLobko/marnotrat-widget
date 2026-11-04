@@ -9,7 +9,7 @@ import android.content.Intent
 class CompactWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        for (id in ids) manager.updateAppWidget(id, Widgets.compact(context, id))
+        for (id in ids) Widgets.updateCompact(context, manager, id)
         Widgets.schedule(context)
     }
 

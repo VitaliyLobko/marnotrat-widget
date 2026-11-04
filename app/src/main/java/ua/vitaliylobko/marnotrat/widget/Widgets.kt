@@ -58,9 +58,16 @@ object Widgets {
 
     fun updateAll(c: Context) {
         val m = AppWidgetManager.getInstance(c)
-        for (id in ids(c, CompactWidget::class.java)) m.updateAppWidget(id, compact(c, id))
+        for (id in ids(c, CompactWidget::class.java)) updateCompact(c, m, id)
         for (id in ids(c, LargeWidget::class.java)) m.updateAppWidget(id, large(c, m, id))
         for (id in ids(c, QuickWidget::class.java)) m.updateAppWidget(id, quick(c, id))
+    }
+
+    /** Стопка не пролізла в запит до системи — хоча б перша монета, а не падіння застосунку. */
+    fun updateCompact(c: Context, m: AppWidgetManager, id: Int) {
+        runCatching { m.updateAppWidget(id, compact(c, id)) }.onFailure {
+            runCatching { m.updateAppWidget(id, compact(c, id, coinsOf(c, id, Store.head(c)).take(1))) }
+        }
     }
 
     fun ids(c: Context, cls: Class<*>): IntArray =
@@ -173,8 +180,9 @@ object Widgets {
     // Монета 1×1 малюється з запасом: лаунчер вписує картинку в клітинку сам (fitCenter)
     private const val QUICK_COIN_DP = 72
 
-    // У стопці карток менші: їх до трьох, а пам'ять під картинки віджета обмежена
-    private const val STACK_COIN_DP = 56
+    // У стопці карток менші: їх до трьох, кожна — світла й темна картинка, а весь віджет іде в систему
+    // одним запитом Binder (~1 МБ); при 56 dp три монети його перевищували
+    private const val STACK_COIN_DP = 44
 
     /** Картка стопки на 4×1. Тап — дописує адресу екрана суми в спільний намір стопки (addTemplate). */
     private fun coinItem(c: Context, cat: Head.Cat): RemoteViews {
