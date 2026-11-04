@@ -157,6 +157,41 @@
             android:src="@drawable/btn_income" />
     </LinearLayout>
 
+    <!-- Дві-три монети: крапки — котра зараз; тап по стовпчику — наступна. Свайп лаунчери (Nova) перехоплюють -->
+    <LinearLayout
+        android:id="@+id/coin_dots"
+        android:layout_width="22dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/row_press"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/dot1"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/dot_on" />
+
+        <ImageView
+            android:id="@+id/dot2"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginTop="7dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/dot_off" />
+
+        <ImageView
+            android:id="@+id/dot3"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginTop="7dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/dot_off" />
+    </LinearLayout>
+
     <!-- Замість «−» і «+» — монета вибраної витрати («Налаштувати» на віджеті) на м'якій підкладці:
          заливка монети — бюджет, «+» — записати; тап — екран суми одразу в цю витрату -->
     <LinearLayout
@@ -203,13 +238,4 @@
             android:textSize="11sp" />
     </LinearLayout>
 
-    <!-- Дві-три монети — стопкою: свайп угору-вниз гортає, тап по верхній — екран суми в неї -->
-    <StackView
-        android:id="@+id/coin_stack"
-        android:layout_width="76dp"
-        android:layout_height="match_parent"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="2dp"
-        android:loopViews="true"
-        android:visibility="gone" />
 </LinearLayout>

@@ -60,7 +60,7 @@ object Store {
      */
     fun quick(c: Context, widgetId: Int): Head.Cat? = quicks(c, widgetId).firstOrNull()
 
-    /** Монети віджета: 1×1 — одна, 4×1 — до трьох стопкою. Старі версії зберігали одну монету об'єктом, не масивом. */
+    /** Монети віджета: 1×1 — одна, 4×1 — до трьох по черзі. Старі версії зберігали одну монету об'єктом, не масивом. */
     fun quicks(c: Context, widgetId: Int): List<Head.Cat> =
         parseCats(prefs(c).getString("quick:$widgetId", null))
 
@@ -77,7 +77,14 @@ object Store {
     fun setQuick(c: Context, widgetId: Int, cat: Head.Cat) = setQuicks(c, widgetId, listOf(cat))
 
     fun setQuicks(c: Context, widgetId: Int, cats: List<Head.Cat>) {
-        prefs(c).edit().putString("quick:$widgetId", catsJson(cats)).apply()
+        prefs(c).edit().putString("quick:$widgetId", catsJson(cats)).remove("quickAt:$widgetId").apply()
+    }
+
+    /** Котра з монет 4×1 зараз на віджеті (тап по крапках — наступна). */
+    fun quickAt(c: Context, widgetId: Int): Int = prefs(c).getInt("quickAt:$widgetId", 0)
+
+    fun setQuickAt(c: Context, widgetId: Int, at: Int) {
+        prefs(c).edit().putInt("quickAt:$widgetId", at).apply()
     }
 
     /** Остання версія застосунку на GitHub і коли перевіряли — «Є нова версія» на екрані підключення. */
@@ -90,7 +97,7 @@ object Store {
     }
 
     fun dropQuick(c: Context, widgetIds: IntArray) {
-        prefs(c).edit().apply { for (id in widgetIds) remove("quick:$id") }.apply()
+        prefs(c).edit().apply { for (id in widgetIds) remove("quick:$id").remove("quickAt:$id") }.apply()
     }
 
     fun busy(c: Context): Boolean = prefs(c).getBoolean("busy", false)

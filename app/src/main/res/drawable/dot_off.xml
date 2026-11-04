@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Крапка іншої монети на 4×1: кільце, щоб було видно й на світлому тлі -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <stroke android:width="1.5dp" android:color="@color/muted" />
+    <size android:width="8dp" android:height="8dp" />
+</shape>

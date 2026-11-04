@@ -30,5 +30,6 @@ class CompactWidget : AppWidgetProvider() {
         super.onReceive(context, intent)
         if (intent.action == Widgets.ACTION_REFRESH) Widgets.refreshNow(context)
         Widgets.pinned(context, intent)
+        Widgets.nextCoin(context, intent)
     }
 }

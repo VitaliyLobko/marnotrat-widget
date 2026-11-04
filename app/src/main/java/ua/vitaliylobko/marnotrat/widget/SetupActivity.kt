@@ -220,7 +220,7 @@ class SetupActivity : Activity() {
         val plus = if (canPin) R.drawable.ic_plus_line else null
         return ui.card {
             // Спершу вибір того, що праворуч, потім віджет — лаунчер ставить уже готовий
-            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або 1–3 монети витрат стопкою", plus) {
+            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або 1–3 монети витрат (тап по крапках — наступна)", plus) {
                 startActivity(Intent(this@SetupActivity, QuickConfigActivity::class.java).putExtra(QuickConfigActivity.EXTRA_TARGET, QuickConfigActivity.TARGET_COMPACT))
             })
             addView(ui.divider())
@@ -261,7 +261,7 @@ class SetupActivity : Activity() {
                 val desc = when (cats.size) {
                     0 -> "Праворуч «−» і «+» · змінити"
                     1 -> "Праворуч монета «${cats[0].name}» · змінити"
-                    else -> "Праворуч стопка: ${cats.joinToString(", ") { it.name }} · змінити"
+                    else -> "Праворуч по черзі: ${cats.joinToString(", ") { it.name }} · змінити"
                 }
                 add(ui.row(ui.thumb(R.drawable.thumb_4x1), title("Коротко · 4×1", i, compact.size), desc, onClick = open(id)))
             }

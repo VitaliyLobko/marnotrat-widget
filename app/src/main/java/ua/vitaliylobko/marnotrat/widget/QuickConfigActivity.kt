@@ -28,7 +28,7 @@ class QuickConfigActivity : Activity() {
         else AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId)?.provider?.className == CompactWidget::class.java.name
     }
     private val ui by lazy { Ui(this) }
-    // Монети стопки 4×1 у порядку вибору; поставлений віджет — починаємо з його монет
+    // Монети 4×1 у порядку вибору; поставлений віджет — починаємо з його монет
     private val picked = mutableListOf<Head.Cat>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,8 +96,8 @@ class QuickConfigActivity : Activity() {
                 compact -> {
                     addView(ui.caption("Або монети витрат — до трьох"))
                     addView(ui.text(
-                        if (picked.isEmpty()) "Тапни одну-три монети. Кілька — стопкою: свайп угору-вниз гортає, тап по верхній — екран суми."
-                        else "Стопка: " + picked.joinToString(" → ") { it.name } + ". Перша — зверху.",
+                        if (picked.isEmpty()) "Тапни одну-три монети. Кілька — по черзі: тап по крапках біля монети — наступна, тап по монеті — екран суми."
+                        else "По черзі: " + picked.joinToString(" → ") { it.name } + ".",
                         14f, R.color.muted,
                     ).apply { setPadding(ui.dp(4f), 0, ui.dp(4f), 0) })
                     addView(ui.button(if (picked.isEmpty()) "Вибери монети" else "Готово") { done() }.apply {
@@ -132,7 +132,7 @@ class QuickConfigActivity : Activity() {
         page.post { page.scrollTo(0, y) }
     }
 
-    /** 4×1: тап по монеті — додати в кінець стопки чи прибрати; більше трьох — ні. */
+    /** 4×1: тап по монеті — додати в кінець черги чи прибрати; більше трьох — ні. */
     private fun toggle(cat: Head.Cat) {
         val at = picked.indexOfFirst { it.id == cat.id }
         when {
@@ -174,8 +174,7 @@ class QuickConfigActivity : Activity() {
             val code = (cls.name + it.joinToString(",") { x -> x.id }).hashCode()
             PendingIntent.getBroadcast(this, code, done, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
-        // Прев'ю — лише з першою монетою: стопка з трьох — шість картинок (світла й темна), і запит до системи
-        // перевищує ліміт Binder (~1 МБ) — віджет не ставиться. Не пройшло й так — просимо без прев'ю.
+        // Прев'ю — з першою монетою. Запит не пройшов (ліміт Binder ~1 МБ на картинки) — просимо без прев'ю.
         val extras = if (compact) runCatching {
             Bundle().apply {
                 putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, Widgets.compact(this@QuickConfigActivity, AppWidgetManager.INVALID_APPWIDGET_ID, cats.take(1)))

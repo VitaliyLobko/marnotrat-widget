@@ -9,6 +9,7 @@ import android.net.Uri
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import androidx.work.Constraints
@@ -30,6 +31,7 @@ object Widgets {
     const val ACTION_REFRESH = "ua.vitaliylobko.marnotrat.widget.REFRESH"
     const val ACTION_PINNED = "ua.vitaliylobko.marnotrat.widget.QUICK_PINNED"
     const val EXTRA_CAT = "cat"
+    const val ACTION_NEXT_COIN = "ua.vitaliylobko.marnotrat.widget.NEXT_COIN"
     private const val APP_URL = "https://vitaliylobko.github.io/marnotrat/"
 
     // Шапка старша за 3 години — час з датою й помаранчевим: цифри могли змінитися
@@ -63,11 +65,8 @@ object Widgets {
         for (id in ids(c, QuickWidget::class.java)) m.updateAppWidget(id, quick(c, id))
     }
 
-    /** Стопка не пролізла в запит до системи — хоча б перша монета, а не падіння застосунку. */
     fun updateCompact(c: Context, m: AppWidgetManager, id: Int) {
-        runCatching { m.updateAppWidget(id, compact(c, id)) }.onFailure {
-            runCatching { m.updateAppWidget(id, compact(c, id, coinsOf(c, id, Store.head(c)).take(1))) }
-        }
+        m.updateAppWidget(id, compact(c, id))
     }
 
     fun ids(c: Context, cls: Class<*>): IntArray =
@@ -89,7 +88,7 @@ object Widgets {
     /**
      * 4×1: баланс крупно; на день, сьогодні, платежі — довідкою праворуч; смужка місяця; праворуч «−» витрата
      * й «+» дохід або монета вибраної витрати («Налаштувати» на віджеті).
-     * Дві-три монети — стопкою (StackView): свайп гортає, тап по верхній — екран суми.
+     * Дві-три монети — по одній, крапки ліворуч показують котра; тап по крапках — наступна, тап по монеті — екран суми.
      * picks — монети для прев'ю у вікні лаунчера «Додати на екран», поки номера віджета ще немає.
      */
     fun compact(c: Context, id: Int, picks: List<Head.Cat>? = null): RemoteViews {
@@ -98,26 +97,30 @@ object Widgets {
         v.setOnClickPendingIntent(R.id.root, if (Store.config(c) == null) openSetup(c) else openApp(c, ""))
         val cats = picks ?: coinsOf(c, id, h)
         v.setViewVisibility(R.id.buttons, if (cats.isEmpty()) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.coin_box, if (cats.size == 1) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.coin_stack, if (cats.size > 1) View.VISIBLE else View.GONE)
-        when (cats.size) {
-            0 -> {
-                v.setOnClickPendingIntent(R.id.add_expense, openApp(c, "#add/expense"))
-                v.setOnClickPendingIntent(R.id.add_income, openApp(c, "#add/income"))
-            }
-            1 -> {
-                val cat = cats[0]
-                val (light, dark) = CoinArt.icons(c, cat, QUICK_COIN_DP, badge = true)
-                v.setIcon(R.id.coin, "setImageIcon", light, dark)
-                v.setTextViewText(R.id.coin_name, cat.name)
-                v.setContentDescription(R.id.coin_box, "Записати витрату: ${cat.name}")
-                v.setOnClickPendingIntent(R.id.coin_box, openApp(c, "#add/" + Uri.encode(cat.id)))
-            }
-            else -> {
-                val items = RemoteViews.RemoteCollectionItems.Builder().setHasStableIds(true).setViewTypeCount(1)
-                for (cat in cats) items.addItem(cat.id.hashCode().toLong(), coinItem(c, cat))
-                v.setRemoteAdapter(R.id.coin_stack, items.build())
-                v.setPendingIntentTemplate(R.id.coin_stack, addTemplate(c))
+        v.setViewVisibility(R.id.coin_box, if (cats.isEmpty()) View.GONE else View.VISIBLE)
+        v.setViewVisibility(R.id.coin_dots, if (cats.size > 1) View.VISIBLE else View.GONE)
+        if (cats.isEmpty()) {
+            v.setOnClickPendingIntent(R.id.add_expense, openApp(c, "#add/expense"))
+            v.setOnClickPendingIntent(R.id.add_income, openApp(c, "#add/income"))
+        } else {
+            val at = if (picks != null) 0 else Store.quickAt(c, id) % cats.size
+            val cat = cats[at]
+            val (light, dark) = CoinArt.icons(c, cat, QUICK_COIN_DP, badge = true)
+            v.setIcon(R.id.coin, "setImageIcon", light, dark)
+            v.setTextViewText(R.id.coin_name, cat.name)
+            v.setContentDescription(R.id.coin_box, "Записати витрату: ${cat.name}")
+            v.setOnClickPendingIntent(R.id.coin_box, openApp(c, "#add/" + Uri.encode(cat.id)))
+            // Поруч із крапками підкладка ближче — інакше між ними порожня щілина
+            v.setViewLayoutMargin(R.id.coin_box, RemoteViews.MARGIN_START, if (cats.size > 1) 4f else 10f, TypedValue.COMPLEX_UNIT_DIP)
+            if (cats.size > 1) {
+                val dots = intArrayOf(R.id.dot1, R.id.dot2, R.id.dot3)
+                dots.forEachIndexed { i, dot ->
+                    v.setViewVisibility(dot, if (i < cats.size) View.VISIBLE else View.GONE)
+                    v.setImageViewResource(dot, if (i == at) R.drawable.dot_on else R.drawable.dot_off)
+                }
+                val next = cats[(at + 1) % cats.size]
+                v.setContentDescription(R.id.coin_dots, "Монета ${at + 1} з ${cats.size}. Наступна: ${next.name}")
+                v.setOnClickPendingIntent(R.id.coin_dots, nextCoin(c, id))
             }
         }
         // Окремої кнопки ⟳ немає місця — оновлює тап по рядку зі смужкою
@@ -180,25 +183,21 @@ object Widgets {
     // Монета 1×1 малюється з запасом: лаунчер вписує картинку в клітинку сам (fitCenter)
     private const val QUICK_COIN_DP = 72
 
-    // У стопці карток менші: їх до трьох, кожна — світла й темна картинка, а весь віджет іде в систему
-    // одним запитом Binder (~1 МБ); при 56 dp три монети його перевищували
-    private const val STACK_COIN_DP = 44
-
-    /** Картка стопки на 4×1. Тап — дописує адресу екрана суми в спільний намір стопки (addTemplate). */
-    private fun coinItem(c: Context, cat: Head.Cat): RemoteViews {
-        val v = RemoteViews(c.packageName, R.layout.widget_coin_item)
-        val (light, dark) = CoinArt.icons(c, cat, STACK_COIN_DP, badge = true)
-        v.setIcon(R.id.coin, "setImageIcon", light, dark)
-        v.setTextViewText(R.id.coin_name, cat.name)
-        v.setContentDescription(R.id.coin_item, "Записати витрату: ${cat.name}")
-        v.setOnClickFillInIntent(R.id.coin_item, Intent().setData(Uri.parse(APP_URL + "#add/" + Uri.encode(cat.id))))
-        return v
+    /** Тап по крапках 4×1 — наступна монета; номер віджета в намірі, бо 4×1 може бути кілька. */
+    private fun nextCoin(c: Context, id: Int): PendingIntent {
+        val intent = Intent(c, CompactWidget::class.java).setAction(ACTION_NEXT_COIN).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+        return PendingIntent.getBroadcast(c, 20_000 + id, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
-    /** Спільний намір карток стопки: адресу (data) дописує картка, тому PendingIntent змінний. */
-    private fun addTemplate(c: Context): PendingIntent {
-        val intent = Intent(Intent.ACTION_VIEW).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        return PendingIntent.getActivity(c, 7, intent, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    /** Наступна монета 4×1 — і запам'ятати: після оновлення цифр лишається та сама. */
+    fun nextCoin(c: Context, intent: Intent) {
+        if (intent.action != ACTION_NEXT_COIN) return
+        val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
+        val n = coinsOf(c, id, Store.head(c)).size
+        if (n < 2) return
+        Store.setQuickAt(c, id, (Store.quickAt(c, id) + 1) % n)
+        updateCompact(c, AppWidgetManager.getInstance(c), id)
     }
 
     /**
