@@ -7,8 +7,10 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.view.View
 import android.widget.ImageView
-import org.json.JSONObject
+import android.widget.ScrollView
+import android.widget.Toast
 
 /**
  * Вибір монети для віджета 1×1 і для монети праворуч на 4×1. Входи: лаунчер додає віджет (чи «Налаштувати» на ньому),
@@ -26,6 +28,8 @@ class QuickConfigActivity : Activity() {
         else AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId)?.provider?.className == CompactWidget::class.java.name
     }
     private val ui by lazy { Ui(this) }
+    // Монети стопки 4×1 у порядку вибору; поставлений віджет — починаємо з його монет
+    private val picked = mutableListOf<Head.Cat>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +37,7 @@ class QuickConfigActivity : Activity() {
             ?: AppWidgetManager.INVALID_APPWIDGET_ID
         // Закрили, нічого не вибравши, — лаунчер не ставить віджет (чи лишає старий вибір)
         setResult(RESULT_CANCELED, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
+        if (compact && widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) picked += Store.quicks(this, widgetId)
         render()
     }
 
@@ -52,9 +57,9 @@ class QuickConfigActivity : Activity() {
     private fun render() {
         val cats = Store.head(this)?.cats.orEmpty()
         val current = if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) Store.quick(this, widgetId)?.id else null
-        setContentView(ui.page {
+        val page = ui.page {
             addView(
-                if (compact) ui.title("Коротко · 4×1", "Що буде праворуч: кнопки «−» і «+» чи монета витрати — тап по ній одразу відкриває екран суми")
+                if (compact) ui.title("Коротко · 4×1", "Що буде праворуч: кнопки «−» і «+» чи монети витрат — тап по монеті одразу відкриває екран суми")
                 else ui.title("Швидка витрата", "Тап по віджету — одразу екран суми в цю монету"),
             )
             val connected = Store.config(this@QuickConfigActivity) != null
@@ -88,8 +93,28 @@ class QuickConfigActivity : Activity() {
                         alpha = if (busy) 0.6f else 1f
                     }, ui.lp(14f))
                 }, ui.lp(8f))
+                compact -> {
+                    addView(ui.caption("Або монети витрат — до трьох"))
+                    addView(ui.text(
+                        if (picked.isEmpty()) "Тапни одну-три монети. Кілька — стопкою: свайп угору-вниз гортає, тап по верхній — екран суми."
+                        else "Стопка: " + picked.joinToString(" → ") { it.name } + ". Перша — зверху.",
+                        14f, R.color.muted,
+                    ).apply { setPadding(ui.dp(4f), 0, ui.dp(4f), 0) })
+                    addView(ui.button(if (picked.isEmpty()) "Вибери монети" else "Готово") { done() }.apply {
+                        isEnabled = picked.isNotEmpty()
+                        alpha = if (picked.isEmpty()) 0.6f else 1f
+                    }, ui.lp(12f))
+                    addView(ui.card {
+                        cats.forEachIndexed { i, cat ->
+                            if (i > 0) addView(ui.divider())
+                            val coin = ImageView(context).apply { setImageBitmap(CoinArt.bitmap(context, cat, 48)) }
+                            val at = picked.indexOfFirst { it.id == cat.id }
+                            addView(ui.row(coin, cat.name, Widgets.catSpent(cat), trailingView = if (at >= 0) ui.num(at + 1) else null) { toggle(cat) })
+                        }
+                    }, ui.lp(12f))
+                }
                 else -> {
-                    addView(ui.caption(if (compact) "Або монета витрати" else "Витрати"))
+                    addView(ui.caption("Витрати"))
                     addView(ui.card {
                         cats.forEachIndexed { i, cat ->
                             if (i > 0) addView(ui.divider())
@@ -100,21 +125,38 @@ class QuickConfigActivity : Activity() {
                     })
                 }
             }
-        })
+        }
+        // Тап по монеті перемальовує екран — прокрутка лишається, де була
+        val y = ((findViewById<View>(android.R.id.content) as? android.view.ViewGroup)?.getChildAt(0) as? ScrollView)?.scrollY ?: 0
+        setContentView(page)
+        page.post { page.scrollTo(0, y) }
+    }
+
+    /** 4×1: тап по монеті — додати в кінець стопки чи прибрати; більше трьох — ні. */
+    private fun toggle(cat: Head.Cat) {
+        val at = picked.indexOfFirst { it.id == cat.id }
+        when {
+            at >= 0 -> picked.removeAt(at)
+            picked.size >= MAX_STACK -> {
+                Toast.makeText(this, "Не більше трьох — спершу прибери одну", Toast.LENGTH_SHORT).show()
+                return
+            }
+            else -> picked += cat
+        }
+        render()
     }
 
     /** 4×1 без монети — «−» і «+». */
-    private fun buttons() {
-        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return pin(null)
-        Store.dropQuick(this, intArrayOf(widgetId))
-        Widgets.updateAll(this)
-        setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
-        finish()
-    }
+    private fun buttons() = save(emptyList())
 
-    private fun choose(cat: Head.Cat) {
-        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return pin(cat)
-        Store.setQuick(this, widgetId, cat)
+    private fun done() = save(picked.toList())
+
+    private fun choose(cat: Head.Cat) = save(listOf(cat))
+
+    /** Поставлений віджет — зберегти й перемалювати; ще не поставлений — попросити лаунчер поставити. */
+    private fun save(cats: List<Head.Cat>) {
+        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return pin(cats)
+        if (cats.isEmpty()) Store.dropQuick(this, intArrayOf(widgetId)) else Store.setQuicks(this, widgetId, cats)
         Widgets.updateAll(this)
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
         finish()
@@ -124,16 +166,16 @@ class QuickConfigActivity : Activity() {
      * Просимо лаунчер поставити вже налаштований віджет. Номер віджета ще невідомий: лаунчер допише його в намір
      * колбеку, тому PendingIntent змінний. Прев'ю у вікні лаунчера — справжній 4×1 з вибраним (не всі лаунчери його показують).
      */
-    private fun pin(cat: Head.Cat?) {
+    private fun pin(cats: List<Head.Cat>) {
         val m = AppWidgetManager.getInstance(this)
         val cls = if (compact) CompactWidget::class.java else QuickWidget::class.java
-        val callback = cat?.let {
-            val json = JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("cur", it.cur).toString()
-            val done = Intent(this, cls).setAction(Widgets.ACTION_PINNED).putExtra(Widgets.EXTRA_CAT, json)
-            PendingIntent.getBroadcast(this, (cls.name + it.id).hashCode(), done, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val callback = cats.takeIf { it.isNotEmpty() }?.let {
+            val done = Intent(this, cls).setAction(Widgets.ACTION_PINNED).putExtra(Widgets.EXTRA_CAT, Store.catsJson(it))
+            val code = (cls.name + it.joinToString(",") { x -> x.id }).hashCode()
+            PendingIntent.getBroadcast(this, code, done, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
         val extras = if (compact) Bundle().apply {
-            putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, Widgets.compact(this@QuickConfigActivity, AppWidgetManager.INVALID_APPWIDGET_ID, cat))
+            putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, Widgets.compact(this@QuickConfigActivity, AppWidgetManager.INVALID_APPWIDGET_ID, cats))
         } else null
         if (m.isRequestPinAppWidgetSupported) m.requestPinAppWidget(ComponentName(this, cls), extras, callback)
         finish()
@@ -142,5 +184,6 @@ class QuickConfigActivity : Activity() {
     companion object {
         const val EXTRA_TARGET = "target"
         const val TARGET_COMPACT = "compact"
+        private const val MAX_STACK = 3
     }
 }

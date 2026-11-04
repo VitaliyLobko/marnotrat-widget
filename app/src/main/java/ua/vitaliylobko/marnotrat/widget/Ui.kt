@@ -87,7 +87,7 @@ class Ui(private val a: Activity) {
         }
 
     /** Рядок картки: мініатюра чи монета, назва й опис, праворуч «+» чи нічого. Весь рядок — одна кнопка. */
-    fun row(icon: View, title: String, desc: String?, trailing: Int? = null, onClick: () -> Unit): View =
+    fun row(icon: View, title: String, desc: String?, trailing: Int? = null, trailingView: View? = null, onClick: () -> Unit): View =
         LinearLayout(a).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -111,7 +111,19 @@ class Ui(private val a: Activity) {
                 imageTintList = ColorStateList.valueOf(color(R.color.brand_text))
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LinearLayout.LayoutParams(dp(24f), dp(24f)))
+            if (trailingView != null) addView(trailingView, LinearLayout.LayoutParams(dp(26f), dp(26f)))
         }
+
+    /** Номер у колі бренду — порядок монети в стопці 4×1. */
+    fun num(n: Int): View = medium(TextView(a)).apply {
+        text = n.toString()
+        textSize = 13f
+        gravity = Gravity.CENTER
+        setTextColor(color(R.color.on_brand))
+        setBackgroundResource(R.drawable.dot)
+        backgroundTintList = ColorStateList.valueOf(color(R.color.brand))
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
 
     /** Лінія між рядками картки — від тексту, не з краю, як у списках Android. */
     fun divider(): View = View(a).apply {

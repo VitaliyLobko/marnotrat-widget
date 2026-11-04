@@ -43,6 +43,7 @@ class SetupActivity : Activity() {
         super.onStart()
         listener = Store.listen(this) { runOnUiThread { render() } }
         render()
+        checkLatest()
     }
 
     override fun onStop() {
@@ -83,6 +84,7 @@ class SetupActivity : Activity() {
                 return@page
             }
             addView(status(cfg), ui.lp(8f))
+            update()?.let { addView(it, ui.lp(12f)) }
             placed()?.let {
                 addView(ui.caption("На екрані"))
                 addView(it)
@@ -155,6 +157,62 @@ class SetupActivity : Activity() {
         }
     }
 
+    /** «Є нова версія» — коли на GitHub новіша за встановлену. «Встановити» в Марнотраті лише підключає, не оновлює. */
+    private fun update(): View? {
+        val latest = Store.latest(this) ?: return null
+        if (!newer(latest, version())) return null
+        return ui.card {
+            setPadding(ui.dp(16f), ui.dp(16f), ui.dp(16f), ui.dp(16f))
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(ui.dot(R.color.brand), LinearLayout.LayoutParams(ui.dp(10f), ui.dp(10f)).apply { marginEnd = ui.dp(10f) })
+                addView(ui.text("Є нова версія $latest", 17f, bold = true))
+            })
+            addView(ui.text("Chrome завантажить файл — відкрий його зі сповіщення чи «Завантажень» і натисни «Оновити». Віджети й підключення лишаться.", 14f, R.color.muted), ui.lp(6f))
+            addView(ui.button("Оновити") {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(APK_URL)))
+            }, ui.lp(14f))
+        }
+    }
+
+    /**
+     * Остання версія з GitHub — не частіше разу на годину, у фоні; прийшла — екран перемалює слухач Store.
+     * User-Agent — назва застосунку: GitHub API без нього відповідає 403.
+     */
+    private fun checkLatest() {
+        if (System.currentTimeMillis() - Store.latestAt(this) < 60 * 60 * 1000L) return
+        val c = applicationContext
+        Thread {
+            runCatching {
+                val conn = java.net.URL(RELEASES_API).openConnection() as java.net.HttpURLConnection
+                try {
+                    conn.connectTimeout = 10_000
+                    conn.readTimeout = 10_000
+                    conn.setRequestProperty("User-Agent", "marnotrat-widget")
+                    conn.setRequestProperty("Accept", "application/vnd.github+json")
+                    if (conn.responseCode == 200) {
+                        val tag = org.json.JSONObject(conn.inputStream.bufferedReader().use { it.readText() }).optString("tag_name")
+                        Store.setLatest(c, tag.removePrefix("v").ifEmpty { null }, System.currentTimeMillis())
+                    }
+                } finally {
+                    conn.disconnect()
+                }
+            }
+        }.start()
+    }
+
+    /** 0.1.18 новіша за 0.1.17 — порівняння по числах, не рядком (0.1.9 < 0.1.10). */
+    private fun newer(a: String, b: String): Boolean {
+        val x = a.split('.').map { it.toIntOrNull() ?: 0 }
+        val y = b.split('.').map { it.toIntOrNull() ?: 0 }
+        for (i in 0 until maxOf(x.size, y.size)) {
+            val d = x.getOrElse(i) { 0 } - y.getOrElse(i) { 0 }
+            if (d != 0) return d > 0
+        }
+        return false
+    }
+
     private fun widgets(): View {
         val m = AppWidgetManager.getInstance(this)
         val canPin = m.isRequestPinAppWidgetSupported
@@ -162,11 +220,11 @@ class SetupActivity : Activity() {
         val plus = if (canPin) R.drawable.ic_plus_line else null
         return ui.card {
             // Спершу вибір того, що праворуч, потім віджет — лаунчер ставить уже готовий
-            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або монета витрати", plus) {
+            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або 1–3 монети витрат стопкою", plus) {
                 startActivity(Intent(this@SetupActivity, QuickConfigActivity::class.java).putExtra(QuickConfigActivity.EXTRA_TARGET, QuickConfigActivity.TARGET_COMPACT))
             })
             addView(ui.divider())
-            addView(ui.row(ui.thumb(R.drawable.thumb_4x2), "День і тиждень · 4×2", "Витрати за 7 днів із нормою, смужка місяця, наступний платіж", plus, pin(LargeWidget::class.java)))
+            addView(ui.row(ui.thumb(R.drawable.thumb_4x2), "День і тиждень · 4×2", "Витрати за 7 днів із нормою, смужка місяця, наступний платіж", plus, onClick = pin(LargeWidget::class.java)))
             addView(ui.divider())
             // Спершу монета, потім віджет: так лаунчер ставить уже готовий, без кроку «Обрати»
             addView(ui.row(ui.thumb(R.drawable.thumb_1x1), "Швидка витрата · 1×1", "Монета однієї витрати: тап — одразу екран суми", plus) {
@@ -199,14 +257,18 @@ class SetupActivity : Activity() {
                 addView(row)
             }
             compact.forEachIndexed { i, id ->
-                val cat = Store.quick(this@SetupActivity, id)
-                add(ui.row(ui.thumb(R.drawable.thumb_4x1), title("Коротко · 4×1", i, compact.size),
-                    if (cat == null) "Праворуч «−» і «+» · змінити" else "Праворуч монета «${cat.name}» · змінити", null, open(id)))
+                val cats = Store.quicks(this@SetupActivity, id)
+                val desc = when (cats.size) {
+                    0 -> "Праворуч «−» і «+» · змінити"
+                    1 -> "Праворуч монета «${cats[0].name}» · змінити"
+                    else -> "Праворуч стопка: ${cats.joinToString(", ") { it.name }} · змінити"
+                }
+                add(ui.row(ui.thumb(R.drawable.thumb_4x1), title("Коротко · 4×1", i, compact.size), desc, onClick = open(id)))
             }
             quick.forEachIndexed { i, id ->
                 val cat = Store.quick(this@SetupActivity, id)
                 add(ui.row(ui.thumb(R.drawable.thumb_1x1), title("Швидка витрата · 1×1", i, quick.size),
-                    if (cat == null) "Монету не вибрано · обрати" else "Монета «${cat.name}» · змінити", null, open(id)))
+                    if (cat == null) "Монету не вибрано · обрати" else "Монета «${cat.name}» · змінити", onClick = open(id)))
             }
         }
     }
@@ -235,6 +297,11 @@ class SetupActivity : Activity() {
             addView(ui.gap(0f), LinearLayout.LayoutParams(ui.dp(8f), 1))
             addView(ui.button("Підключити") { connect(p); render() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }, ui.lp(14f))
+    }
+
+    companion object {
+        private const val APK_URL = "https://github.com/VitaliyLobko/marnotrat-widget/releases/latest/download/marnotrat-widget.apk"
+        private const val RELEASES_API = "https://api.github.com/repos/VitaliyLobko/marnotrat-widget/releases/latest"
     }
 
     private fun sameDay(t: Long): Boolean {

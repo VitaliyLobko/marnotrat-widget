@@ -1,6 +1,7 @@
 package ua.vitaliylobko.marnotrat.widget
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 
 /** Адреса сервера й ключ доступу (з Марнотрату), остання шапка й стан оновлення — лише на цьому телефоні. */
@@ -54,15 +55,38 @@ object Store {
     }
 
     /**
-     * Монета віджета 1×1. Разом з id — назва й іконка на момент вибору: віджет малюється й тоді,
+     * Перша монета віджета. Разом з id — назва й іконка на момент вибору: віджет малюється й тоді,
      * коли шапки ще немає чи сервер старий і монет не шле.
      */
-    fun quick(c: Context, widgetId: Int): Head.Cat? =
-        prefs(c).getString("quick:$widgetId", null)?.let { runCatching { Head.cat(JSONObject(it)) }.getOrNull() }
+    fun quick(c: Context, widgetId: Int): Head.Cat? = quicks(c, widgetId).firstOrNull()
 
-    fun setQuick(c: Context, widgetId: Int, cat: Head.Cat) {
-        val o = JSONObject().put("id", cat.id).put("name", cat.name).put("icon", cat.icon).put("cur", cat.cur)
-        prefs(c).edit().putString("quick:$widgetId", o.toString()).apply()
+    /** Монети віджета: 1×1 — одна, 4×1 — до трьох стопкою. Старі версії зберігали одну монету об'єктом, не масивом. */
+    fun quicks(c: Context, widgetId: Int): List<Head.Cat> =
+        parseCats(prefs(c).getString("quick:$widgetId", null))
+
+    fun parseCats(json: String?): List<Head.Cat> = runCatching {
+        val s = json?.trim() ?: return emptyList()
+        if (s.startsWith("[")) JSONArray(s).let { a -> (0 until a.length()).map { Head.cat(a.getJSONObject(it)) } }
+        else listOf(Head.cat(JSONObject(s)))
+    }.getOrDefault(emptyList())
+
+    fun catsJson(cats: List<Head.Cat>): String = JSONArray().apply {
+        for (cat in cats) put(JSONObject().put("id", cat.id).put("name", cat.name).put("icon", cat.icon).put("cur", cat.cur))
+    }.toString()
+
+    fun setQuick(c: Context, widgetId: Int, cat: Head.Cat) = setQuicks(c, widgetId, listOf(cat))
+
+    fun setQuicks(c: Context, widgetId: Int, cats: List<Head.Cat>) {
+        prefs(c).edit().putString("quick:$widgetId", catsJson(cats)).apply()
+    }
+
+    /** Остання версія застосунку на GitHub і коли перевіряли — «Є нова версія» на екрані підключення. */
+    fun latest(c: Context): String? = prefs(c).getString("latest", null)
+
+    fun latestAt(c: Context): Long = prefs(c).getLong("latestAt", 0L)
+
+    fun setLatest(c: Context, version: String?, at: Long) {
+        prefs(c).edit().putString("latest", version).putLong("latestAt", at).apply()
     }
 
     fun dropQuick(c: Context, widgetIds: IntArray) {

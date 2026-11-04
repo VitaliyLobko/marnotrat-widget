@@ -202,4 +202,14 @@
             android:textColor="@color/brand_text"
             android:textSize="11sp" />
     </LinearLayout>
+
+    <!-- Дві-три монети — стопкою: свайп угору-вниз гортає, тап по верхній — екран суми в неї -->
+    <StackView
+        android:id="@+id/coin_stack"
+        android:layout_width="76dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="2dp"
+        android:loopViews="true"
+        android:visibility="gone" />
 </LinearLayout>
