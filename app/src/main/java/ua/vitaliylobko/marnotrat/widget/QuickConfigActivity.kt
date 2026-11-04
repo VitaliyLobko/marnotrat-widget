@@ -11,18 +11,19 @@ import android.widget.ImageView
 import org.json.JSONObject
 
 /**
- * Вибір монети для віджета 1×1 і для монети праворуч на 4×1. Три входи: лаунчер додає віджет (чи «Налаштувати» на ньому) — номер віджета
- * в EXTRA_APPWIDGET_ID; тап по ще не налаштованому віджету — так само; «Підключення» → «Швидка витрата» —
- * без номера: тоді після вибору просимо лаунчер поставити віджет, монету він отримає через QuickWidget.ACTION_PINNED.
+ * Вибір монети для віджета 1×1 і для монети праворуч на 4×1. Входи: лаунчер додає віджет (чи «Налаштувати» на ньому),
+ * тап по ще не налаштованому 1×1, «Підключення» → «На екрані» — номер віджета в EXTRA_APPWIDGET_ID;
+ * «Підключення» → «Додати на екран» — без номера: тоді після вибору просимо лаунчер поставити віджет,
+ * монету він отримає через Widgets.ACTION_PINNED. Який віджет ставити — EXTRA_TARGET.
  */
 class QuickConfigActivity : Activity() {
 
     private var widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private var listener: SharedPreferences.OnSharedPreferenceChangeListener? = null
-    // Відкрили з віджета 4×1 («Налаштувати»), а не 1×1: інший заголовок і пункт «Кнопки «−» і «+»»
+    // 4×1, а не 1×1: інший заголовок, пункт «Кнопки «−» і «+»» і віджет, який ставимо
     private val compact by lazy {
-        widgetId != AppWidgetManager.INVALID_APPWIDGET_ID &&
-            AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId)?.provider?.className == CompactWidget::class.java.name
+        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) intent?.getStringExtra(EXTRA_TARGET) == TARGET_COMPACT
+        else AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId)?.provider?.className == CompactWidget::class.java.name
     }
     private val ui by lazy { Ui(this) }
 
@@ -53,11 +54,21 @@ class QuickConfigActivity : Activity() {
         val current = if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) Store.quick(this, widgetId)?.id else null
         setContentView(ui.page {
             addView(
-                if (compact) ui.title("Монета на віджеті 4×1", "Праворуч на віджеті — монета цієї витрати: тап — одразу екран суми")
+                if (compact) ui.title("Коротко · 4×1", "Що буде праворуч: кнопки «−» і «+» чи монета витрати — тап по ній одразу відкриває екран суми")
                 else ui.title("Швидка витрата", "Тап по віджету — одразу екран суми в цю монету"),
             )
+            val connected = Store.config(this@QuickConfigActivity) != null
+            // 4×1 може лишитись як був: «−» будь-яка витрата, «+» дохід — і тоді, коли монет із сервера ще немає
+            if (compact && connected) {
+                addView(ui.caption("Без монети"))
+                addView(ui.card {
+                    val placed = widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
+                    val check = if (placed && current == null) R.drawable.ic_check_line else null
+                    addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Кнопки «−» і «+»", "Будь-яка витрата чи дохід", check) { buttons() })
+                })
+            }
             when {
-                Store.config(this@QuickConfigActivity) == null -> addView(ui.card {
+                !connected -> addView(ui.card {
                     setPadding(ui.dp(16f), ui.dp(16f), ui.dp(16f), ui.dp(16f))
                     addView(ui.text("Спершу підключи віджет до Марнотрату.", 15f))
                     addView(ui.button("Відкрити підключення") {
@@ -78,15 +89,7 @@ class QuickConfigActivity : Activity() {
                     }, ui.lp(14f))
                 }, ui.lp(8f))
                 else -> {
-                    // 4×1 може лишитись як був: «−» будь-яка витрата, «+» дохід
-                    if (compact) {
-                        addView(ui.caption("Без монети"))
-                        addView(ui.card {
-                            val check = if (current == null) R.drawable.ic_check_line else null
-                            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Кнопки «−» і «+»", "Будь-яка витрата чи дохід — як було", check) { buttons() })
-                        })
-                    }
-                    addView(ui.caption("Витрати"))
+                    addView(ui.caption(if (compact) "Або монета витрати" else "Витрати"))
                     addView(ui.card {
                         cats.forEachIndexed { i, cat ->
                             if (i > 0) addView(ui.divider())
@@ -100,8 +103,9 @@ class QuickConfigActivity : Activity() {
         })
     }
 
-    /** 4×1 без монети — знову «−» і «+». */
+    /** 4×1 без монети — «−» і «+». */
     private fun buttons() {
+        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return pin(null)
         Store.dropQuick(this, intArrayOf(widgetId))
         Widgets.updateAll(this)
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
@@ -109,19 +113,34 @@ class QuickConfigActivity : Activity() {
     }
 
     private fun choose(cat: Head.Cat) {
-        val m = AppWidgetManager.getInstance(this)
-        if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-            Store.setQuick(this, widgetId, cat)
-            Widgets.updateAll(this)
-            setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
-            finish()
-            return
-        }
-        // Номер віджета ще невідомий: лаунчер допише його в цей намір, тому PendingIntent змінний
-        val json = JSONObject().put("id", cat.id).put("name", cat.name).put("icon", cat.icon).put("cur", cat.cur).toString()
-        val done = Intent(this, QuickWidget::class.java).setAction(QuickWidget.ACTION_PINNED).putExtra(QuickWidget.EXTRA_CAT, json)
-        val callback = PendingIntent.getBroadcast(this, cat.id.hashCode(), done, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        if (m.isRequestPinAppWidgetSupported) m.requestPinAppWidget(ComponentName(this, QuickWidget::class.java), null, callback)
+        if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return pin(cat)
+        Store.setQuick(this, widgetId, cat)
+        Widgets.updateAll(this)
+        setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
         finish()
+    }
+
+    /**
+     * Просимо лаунчер поставити вже налаштований віджет. Номер віджета ще невідомий: лаунчер допише його в намір
+     * колбеку, тому PendingIntent змінний. Прев'ю у вікні лаунчера — справжній 4×1 з вибраним (не всі лаунчери його показують).
+     */
+    private fun pin(cat: Head.Cat?) {
+        val m = AppWidgetManager.getInstance(this)
+        val cls = if (compact) CompactWidget::class.java else QuickWidget::class.java
+        val callback = cat?.let {
+            val json = JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("cur", it.cur).toString()
+            val done = Intent(this, cls).setAction(Widgets.ACTION_PINNED).putExtra(Widgets.EXTRA_CAT, json)
+            PendingIntent.getBroadcast(this, (cls.name + it.id).hashCode(), done, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        }
+        val extras = if (compact) Bundle().apply {
+            putParcelable(AppWidgetManager.EXTRA_APPWIDGET_PREVIEW, Widgets.compact(this@QuickConfigActivity, AppWidgetManager.INVALID_APPWIDGET_ID, cat))
+        } else null
+        if (m.isRequestPinAppWidgetSupported) m.requestPinAppWidget(ComponentName(this, cls), extras, callback)
+        finish()
+    }
+
+    companion object {
+        const val EXTRA_TARGET = "target"
+        const val TARGET_COMPACT = "compact"
     }
 }

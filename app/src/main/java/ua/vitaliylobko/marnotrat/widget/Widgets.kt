@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit
 /** Розклад оновлень і малювання обох віджетів. Цифри не рахуються тут — лише показуються з шапки. */
 object Widgets {
     const val ACTION_REFRESH = "ua.vitaliylobko.marnotrat.widget.REFRESH"
+    const val ACTION_PINNED = "ua.vitaliylobko.marnotrat.widget.QUICK_PINNED"
+    const val EXTRA_CAT = "cat"
     private const val APP_URL = "https://vitaliylobko.github.io/marnotrat/"
 
     // Шапка старша за 3 години — час з датою й помаранчевим: цифри могли змінитися
@@ -61,19 +63,33 @@ object Widgets {
         for (id in ids(c, QuickWidget::class.java)) m.updateAppWidget(id, quick(c, id))
     }
 
-    private fun ids(c: Context, cls: Class<*>): IntArray =
+    fun ids(c: Context, cls: Class<*>): IntArray =
         AppWidgetManager.getInstance(c).getAppWidgetIds(ComponentName(c, cls))
+
+    /**
+     * Віджет додано з «Підключення» (requestPinAppWidget): монету вже вибрано, лаунчер повідомляє номер віджета.
+     * Без монети (4×1 з «−» і «+») колбеку немає — нічого зберігати.
+     */
+    fun pinned(c: Context, intent: Intent) {
+        if (intent.action != ACTION_PINNED) return
+        val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        val cat = intent.getStringExtra(EXTRA_CAT)?.let { runCatching { Head.cat(org.json.JSONObject(it)) }.getOrNull() }
+        if (id == AppWidgetManager.INVALID_APPWIDGET_ID || cat == null) return
+        Store.setQuick(c, id, cat)
+        updateAll(c)
+    }
 
     /**
      * 4×1: баланс крупно; на день, сьогодні, платежі — довідкою праворуч; смужка місяця; праворуч «−» витрата
      * й «+» дохід або монета вибраної витрати («Налаштувати» на віджеті).
+     * pick — монета для прев'ю у вікні лаунчера «Додати на екран», поки номера віджета ще немає.
      */
-    fun compact(c: Context, id: Int): RemoteViews {
+    fun compact(c: Context, id: Int, pick: Head.Cat? = null): RemoteViews {
         val v = RemoteViews(c.packageName, R.layout.widget_compact)
         val h = Store.head(c)
         v.setOnClickPendingIntent(R.id.root, if (Store.config(c) == null) openSetup(c) else openApp(c, ""))
         // Монету прибрали з Марнотрату — повертаються «−» і «+», а не порожня плитка
-        val cat = coinOf(c, id, h).takeUnless { it.second }?.first
+        val cat = pick ?: coinOf(c, id, h).takeUnless { it.second }?.first
         v.setViewVisibility(R.id.buttons, if (cat == null) View.VISIBLE else View.GONE)
         v.setViewVisibility(R.id.coin_box, if (cat == null) View.GONE else View.VISIBLE)
         if (cat == null) {

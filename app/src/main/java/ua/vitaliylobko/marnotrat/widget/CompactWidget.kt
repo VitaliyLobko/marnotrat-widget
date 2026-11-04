@@ -29,5 +29,6 @@ class CompactWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == Widgets.ACTION_REFRESH) Widgets.refreshNow(context)
+        Widgets.pinned(context, intent)
     }
 }

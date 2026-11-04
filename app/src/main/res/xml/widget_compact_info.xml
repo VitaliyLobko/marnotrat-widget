@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Оновлення — WorkManager раз на 15 хв (updatePeriodMillis не частіше 30 хв), тож тут 0.
-     «Налаштувати» (reconfigurable) — монета витрати праворуч замість «−» і «+»; при додаванні вибір не обов'язковий -->
+     «Налаштувати» (reconfigurable) — монета витрати праворуч замість «−» і «+»; при додаванні вибір не обов'язковий.
+     Не всі лаунчери (Nova) це вміють — тому ще «Підключення» → «На екрані» й вибір до «Додати на екран» -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:configure="ua.vitaliylobko.marnotrat.widget.QuickConfigActivity"
     android:description="@string/widget_compact_desc"

@@ -83,6 +83,10 @@ class SetupActivity : Activity() {
                 return@page
             }
             addView(status(cfg), ui.lp(8f))
+            placed()?.let {
+                addView(ui.caption("На екрані"))
+                addView(it)
+            }
             addView(ui.caption("Додати на екран"))
             addView(widgets())
             addView(ui.caption("Як це працює"))
@@ -157,7 +161,10 @@ class SetupActivity : Activity() {
         val pin = { cls: Class<*> -> { m.requestPinAppWidget(ComponentName(this, cls), null, null); Unit } }
         val plus = if (canPin) R.drawable.ic_plus_line else null
         return ui.card {
-            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або монета витрати — «Налаштувати» на віджеті", plus, pin(CompactWidget::class.java)))
+            // Спершу вибір того, що праворуч, потім віджет — лаунчер ставить уже готовий
+            addView(ui.row(ui.thumb(R.drawable.thumb_4x1), "Коротко · 4×1", "Баланс, на день, смужка місяця; праворуч «−» і «+» або монета витрати", plus) {
+                startActivity(Intent(this@SetupActivity, QuickConfigActivity::class.java).putExtra(QuickConfigActivity.EXTRA_TARGET, QuickConfigActivity.TARGET_COMPACT))
+            })
             addView(ui.divider())
             addView(ui.row(ui.thumb(R.drawable.thumb_4x2), "День і тиждень · 4×2", "Витрати за 7 днів із нормою, смужка місяця, наступний платіж", plus, pin(LargeWidget::class.java)))
             addView(ui.divider())
@@ -168,6 +175,39 @@ class SetupActivity : Activity() {
             if (!canPin) addView(ui.text("Цей лаунчер не вміє додавати віджети з застосунку — додай через довге натискання на головному екрані.", 13f, R.color.muted).apply {
                 setPadding(ui.dp(16f), 0, ui.dp(16f), ui.dp(14f))
             })
+        }
+    }
+
+    /**
+     * Уже поставлені 4×1 і 1×1 — змінити монету. Не всі лаунчери (Nova) мають «Налаштувати» на віджеті,
+     * тож це єдиний певний шлях. null — таких віджетів немає.
+     */
+    private fun placed(): View? {
+        val compact = Widgets.ids(this, CompactWidget::class.java)
+        val quick = Widgets.ids(this, QuickWidget::class.java)
+        if (compact.isEmpty() && quick.isEmpty()) return null
+        val open = { id: Int ->
+            { startActivity(Intent(this, QuickConfigActivity::class.java).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)) }
+        }
+        // Кілька однакових — з номером, щоб розрізнити
+        fun title(name: String, i: Int, n: Int) = if (n > 1) "$name ${i + 1}" else name
+        return ui.card {
+            var first = true
+            fun add(row: View) {
+                if (!first) addView(ui.divider())
+                first = false
+                addView(row)
+            }
+            compact.forEachIndexed { i, id ->
+                val cat = Store.quick(this@SetupActivity, id)
+                add(ui.row(ui.thumb(R.drawable.thumb_4x1), title("Коротко · 4×1", i, compact.size),
+                    if (cat == null) "Праворуч «−» і «+» · змінити" else "Праворуч монета «${cat.name}» · змінити", null, open(id)))
+            }
+            quick.forEachIndexed { i, id ->
+                val cat = Store.quick(this@SetupActivity, id)
+                add(ui.row(ui.thumb(R.drawable.thumb_1x1), title("Швидка витрата · 1×1", i, quick.size),
+                    if (cat == null) "Монету не вибрано · обрати" else "Монета «${cat.name}» · змінити", null, open(id)))
+            }
         }
     }
 

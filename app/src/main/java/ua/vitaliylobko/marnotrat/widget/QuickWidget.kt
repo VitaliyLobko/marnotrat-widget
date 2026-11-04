@@ -28,19 +28,6 @@ class QuickWidget : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        // Віджет додано з «Підключення» (requestPinAppWidget): монету вже вибрано, лаунчер повідомляє номер віджета
-        if (intent.action == ACTION_PINNED) {
-            val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
-            val cat = intent.getStringExtra(EXTRA_CAT)?.let { runCatching { Head.cat(org.json.JSONObject(it)) }.getOrNull() }
-            if (id != AppWidgetManager.INVALID_APPWIDGET_ID && cat != null) {
-                Store.setQuick(context, id, cat)
-                AppWidgetManager.getInstance(context).updateAppWidget(id, Widgets.quick(context, id))
-            }
-        }
-    }
-
-    companion object {
-        const val ACTION_PINNED = "ua.vitaliylobko.marnotrat.widget.QUICK_PINNED"
-        const val EXTRA_CAT = "cat"
+        Widgets.pinned(context, intent)
     }
 }
