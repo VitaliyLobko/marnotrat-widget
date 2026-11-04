@@ -21,11 +21,15 @@ object CoinArt {
     private const val BADGE_RING_DP = 2f
 
     /** Світла й темна — лаунчер сам бере потрібну, коли тема змінюється між оновленнями. */
-    fun icons(c: Context, cat: Head.Cat, sizeDp: Int, badge: Boolean = false): Pair<Icon, Icon> =
-        Icon.createWithBitmap(bitmap(themed(c, false), cat, sizeDp, badge)) to Icon.createWithBitmap(bitmap(themed(c, true), cat, sizeDp, badge))
+    fun icons(c: Context, cat: Head.Cat, sizeDp: Int, badge: Boolean = false, slot: Widgets.Slot? = null): Pair<Icon, Icon> =
+        Icon.createWithBitmap(bitmap(themed(c, false), cat, sizeDp, badge, slot)) to
+            Icon.createWithBitmap(bitmap(themed(c, true), cat, sizeDp, badge, slot))
 
-    /** badge — зелений «+» унизу праворуч (віджет 4×1): монета трохи менша, щоб значок вліз у картинку. */
-    fun bitmap(c: Context, cat: Head.Cat, sizeDp: Int, badge: Boolean = false): Bitmap {
+    /**
+     * badge — «+» унизу праворуч (віджет 4×1): монета трохи менша, щоб значок вліз у картинку.
+     * Колір значка — монети в смужці (slot), без неї зелений.
+     */
+    fun bitmap(c: Context, cat: Head.Cat, sizeDp: Int, badge: Boolean = false, slot: Widgets.Slot? = null): Bitmap {
         val d = c.resources.displayMetrics.density
         val full = (sizeDp * d).toInt().coerceAtLeast(1)
         val bmp = Bitmap.createBitmap(full, full, Bitmap.Config.ARGB_8888)
@@ -62,18 +66,18 @@ object CoinArt {
             ico.setBounds((r - half).toInt(), (r - half).toInt(), (r + half).toInt(), (r + half).toInt())
             ico.draw(cv)
         }
-        if (badge) drawBadge(c, cv, full, d)
+        if (badge) drawBadge(c, cv, full, d, slot)
         return bmp
     }
 
-    private fun drawBadge(c: Context, cv: Canvas, full: Int, d: Float) {
+    private fun drawBadge(c: Context, cv: Canvas, full: Int, d: Float, slot: Widgets.Slot?) {
         val br = full * BADGE_SHARE / 2
         val cx = full - br - BADGE_RING_DP * d / 2
         val cy = cx
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        p.color = c.getColor(R.color.brand_soft)
+        p.color = c.getColor(slot?.soft ?: R.color.brand_soft)
         cv.drawCircle(cx, cy, br + BADGE_RING_DP * d, p)
-        p.color = c.getColor(R.color.brand)
+        p.color = c.getColor(slot?.color ?: R.color.brand)
         cv.drawCircle(cx, cy, br, p)
         p.color = c.getColor(R.color.on_brand)
         p.style = Paint.Style.STROKE

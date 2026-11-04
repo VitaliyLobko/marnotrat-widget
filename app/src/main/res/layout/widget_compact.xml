@@ -161,12 +161,12 @@
          Свайп не годиться: ні Nova, ні лаунчер Samsung не віддають його віджету -->
     <LinearLayout
         android:id="@+id/coin_strip"
-        android:layout_width="36dp"
+        android:layout_width="44dp"
         android:layout_height="match_parent"
         android:layout_marginStart="2dp"
         android:orientation="vertical"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:visibility="gone">
 
         <FrameLayout
@@ -174,16 +174,18 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="@drawable/row_press">
+            android:background="@drawable/row_press"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
 
             <ImageView
                 android:id="@+id/bar1"
-                android:layout_width="8dp"
+                android:layout_width="12dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="center_horizontal"
                 android:importantForAccessibility="no"
                 android:scaleType="fitXY"
-                android:src="@drawable/seg_on" />
+                android:src="@drawable/seg" />
         </FrameLayout>
 
         <FrameLayout
@@ -191,17 +193,18 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/row_press">
+            android:background="@drawable/row_press"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
 
             <ImageView
                 android:id="@+id/bar2"
-                android:layout_width="8dp"
+                android:layout_width="12dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="center_horizontal"
                 android:importantForAccessibility="no"
                 android:scaleType="fitXY"
-                android:src="@drawable/seg_off" />
+                android:src="@drawable/seg" />
         </FrameLayout>
 
         <FrameLayout
@@ -209,17 +212,18 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/row_press">
+            android:background="@drawable/row_press"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
 
             <ImageView
                 android:id="@+id/bar3"
-                android:layout_width="8dp"
+                android:layout_width="12dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="center_horizontal"
                 android:importantForAccessibility="no"
                 android:scaleType="fitXY"
-                android:src="@drawable/seg_off" />
+                android:src="@drawable/seg" />
         </FrameLayout>
     </LinearLayout>
 
@@ -254,10 +258,10 @@
         <TextView
             android:id="@+id/coin_name"
             android:layout_width="match_parent"
-            android:layout_height="14dp"
+            android:layout_height="15dp"
             android:layout_marginTop="2dp"
-            android:autoSizeMaxTextSize="11sp"
-            android:autoSizeMinTextSize="8sp"
+            android:autoSizeMaxTextSize="12sp"
+            android:autoSizeMinTextSize="9sp"
             android:autoSizeStepGranularity="1sp"
             android:autoSizeTextType="uniform"
             android:ellipsize="end"
@@ -266,7 +270,7 @@
             android:importantForAccessibility="no"
             android:maxLines="1"
             android:textColor="@color/brand_text"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
 </LinearLayout>

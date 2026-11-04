@@ -92,6 +92,18 @@ object Widgets {
      * Дві-три монети — по одній, смужка ліворуч: тап по сегменту — саме ця монета; тап по монеті — вікно швидкого запису.
      * picks — монети для прев'ю у вікні лаунчера «Додати на екран», поки номера віджета ще немає.
      */
+    /**
+     * Кольори монет 4×1 за місцем у смужці: сегмент, підкладка, назва, «+».
+     * Синій, фіолетовий, малиновий — не зелений/помаранчевий/червоний, ті на віджеті вже про бюджет.
+     */
+    class Slot(val color: Int, val soft: Int, val text: Int, val pill: Int)
+
+    val SLOTS = listOf(
+        Slot(R.color.slot1, R.color.slot1_soft, R.color.slot1_text, R.drawable.coin_pill_1),
+        Slot(R.color.slot2, R.color.slot2_soft, R.color.slot2_text, R.drawable.coin_pill_2),
+        Slot(R.color.slot3, R.color.slot3_soft, R.color.slot3_text, R.drawable.coin_pill_3),
+    )
+
     fun compact(c: Context, id: Int, picks: List<Head.Cat>? = null): RemoteViews {
         val v = RemoteViews(c.packageName, R.layout.widget_compact)
         val h = Store.head(c)
@@ -106,9 +118,16 @@ object Widgets {
         } else {
             val at = if (picks != null) 0 else Store.quickAt(c, id) % cats.size
             val cat = cats[at]
-            val (light, dark) = CoinArt.icons(c, cat, QUICK_COIN_DP, badge = true)
+            // Одна монета — зелена, як увесь віджет; дві-три — у кожної свій колір (Slot), щоб смужка й монета
+            // впізнавались одна одною
+            val slot = if (cats.size > 1) SLOTS[at] else null
+            val (light, dark) = CoinArt.icons(c, cat, QUICK_COIN_DP, badge = true, slot = slot)
             v.setIcon(R.id.coin, "setImageIcon", light, dark)
             v.setTextViewText(R.id.coin_name, cat.name)
+            if (slot != null) {
+                v.setInt(R.id.coin_box, "setBackgroundResource", slot.pill)
+                v.setColorStateList(R.id.coin_name, "setTextColor", slot.text)
+            }
             v.setContentDescription(R.id.coin_box, "Записати витрату: ${cat.name}")
             v.setOnClickPendingIntent(R.id.coin_box, quickAdd(c, cat))
             // Поруч зі смужкою підкладка ближче — інакше між ними порожня щілина
@@ -119,7 +138,10 @@ object Widgets {
                 segs.forEachIndexed { i, seg ->
                     v.setViewVisibility(seg, if (i < cats.size) View.VISIBLE else View.GONE)
                     if (i >= cats.size) return@forEachIndexed
-                    v.setImageViewResource(bars[i], if (i == at) R.drawable.seg_on else R.drawable.seg_off)
+                    // Показана — широка, інші — вузькі того ж кольору: стан видно й без розрізнення кольорів,
+                    // а вузький сегмент лишається контрастним (≥ 3:1), тобто видно, що на нього можна тапнути
+                    v.setColorStateList(bars[i], "setImageTintList", SLOTS[i].color)
+                    v.setViewLayoutWidth(bars[i], if (i == at) 12f else 5f, TypedValue.COMPLEX_UNIT_DIP)
                     v.setContentDescription(seg, (if (i == at) "Зараз: " else "Показати: ") + cats[i].name)
                     v.setOnClickPendingIntent(seg, pickCoin(c, id, i))
                 }

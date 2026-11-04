@@ -22,4 +22,15 @@
     <color name="bg">#121417</color>
     <color name="line">#30353C</color>
     <color name="brand_soft">#173A2E</color>
+    <!-- Монети 4×1 (2–3): свій колір у кожної — сегмент смужки, підкладка, «+» і назва.
+         Не зелений/помаранчевий/червоний — ті вже про бюджет; назва на підкладці ≥ 4.5:1, смужка й «+» ≥ 3:1 -->
+    <color name="slot1">#3987E5</color>
+    <color name="slot1_soft">#233955</color>
+    <color name="slot1_text">#69A4EB</color>
+    <color name="slot2">#9085E9</color>
+    <color name="slot2_soft">#393956</color>
+    <color name="slot2_text">#A69DED</color>
+    <color name="slot3">#D55181</color>
+    <color name="slot3_soft">#4B2B3B</color>
+    <color name="slot3_text">#E182A4</color>
 </resources>

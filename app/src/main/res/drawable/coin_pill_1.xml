@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Підкладка монети 1 на 4×1 — м'який відтінок її кольору -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/line">
+    <item>
+        <shape>
+            <solid android:color="@color/slot1_soft" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+</ripple>
