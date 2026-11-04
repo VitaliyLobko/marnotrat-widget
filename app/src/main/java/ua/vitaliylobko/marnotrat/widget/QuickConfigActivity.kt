@@ -5,19 +5,9 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
-import android.graphics.Typeface
+import android.content.SharedPreferences
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.util.TypedValue
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import org.json.JSONObject
 
 /**
@@ -28,8 +18,8 @@ import org.json.JSONObject
 class QuickConfigActivity : Activity() {
 
     private var widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
-    private val main = Handler(Looper.getMainLooper())
-    private var waiting = false
+    private var listener: SharedPreferences.OnSharedPreferenceChangeListener? = null
+    private val ui by lazy { Ui(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,88 +30,58 @@ class QuickConfigActivity : Activity() {
         render()
     }
 
-    override fun onResume() {
-        super.onResume()
+    // Монети прийшли з сервера — список з'являється сам
+    override fun onStart() {
+        super.onStart()
+        listener = Store.listen(this) { runOnUiThread { render() } }
         render()
     }
 
-    override fun onDestroy() {
-        main.removeCallbacksAndMessages(null)
-        super.onDestroy()
+    override fun onStop() {
+        listener?.let { Store.unlisten(this, it) }
+        listener = null
+        super.onStop()
     }
-
-    private fun dp(v: Float): Int = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics).toInt()
 
     private fun render() {
-        val pad = dp(24f)
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad, pad, pad)
-        }
-        fun line(s: String, size: Float = 16f) = box.addView(TextView(this).apply {
-            text = s
-            textSize = size
-            setPadding(0, 0, 0, pad / 2)
-        })
-        fun button(s: String, onClick: () -> Unit) = box.addView(Button(this).apply {
-            text = s
-            setOnClickListener { onClick() }
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-
-        line("Швидка витрата", 24f)
         val cats = Store.head(this)?.cats.orEmpty()
-        when {
-            Store.config(this) == null -> {
-                line("Спершу підключи віджет: Марнотрат → Налаштування → На телефоні → «Встановити віджет».")
-                button("Відкрити підключення") { startActivity(Intent(this, SetupActivity::class.java)) }
+        val current = if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) Store.quick(this, widgetId)?.id else null
+        setContentView(ui.page {
+            addView(ui.title("Швидка витрата", "Тап по віджету — одразу екран суми в цю монету"))
+            when {
+                Store.config(this@QuickConfigActivity) == null -> addView(ui.card {
+                    setPadding(ui.dp(16f), ui.dp(16f), ui.dp(16f), ui.dp(16f))
+                    addView(ui.text("Спершу підключи віджет до Марнотрату.", 15f))
+                    addView(ui.button("Відкрити підключення") {
+                        startActivity(Intent(this@QuickConfigActivity, SetupActivity::class.java))
+                    }, ui.lp(14f))
+                }, ui.lp(8f))
+                cats.isEmpty() -> addView(ui.card {
+                    setPadding(ui.dp(16f), ui.dp(16f), ui.dp(16f), ui.dp(16f))
+                    val busy = Store.busy(this@QuickConfigActivity)
+                    addView(ui.text(
+                        if (busy) "Беру монети із сервера…"
+                        else Store.error(this@QuickConfigActivity) ?: "Монет ще немає — онови дані. Не з’являться — відкрий Марнотрат: він передасть записи на сервер.",
+                        15f,
+                    ))
+                    addView(ui.button(if (busy) "Оновлюю…" else "Оновити", primary = false) { Widgets.refreshNow(this@QuickConfigActivity) }.apply {
+                        isEnabled = !busy
+                        alpha = if (busy) 0.6f else 1f
+                    }, ui.lp(14f))
+                }, ui.lp(8f))
+                else -> {
+                    addView(ui.caption("Витрати"))
+                    addView(ui.card {
+                        cats.forEachIndexed { i, cat ->
+                            if (i > 0) addView(ui.divider())
+                            val coin = ImageView(context).apply { setImageBitmap(CoinArt.bitmap(context, cat, 48)) }
+                            val check = if (cat.id == current) R.drawable.ic_check_line else null
+                            addView(ui.row(coin, cat.name, Widgets.catSpent(cat), check) { choose(cat) })
+                        }
+                    })
+                }
             }
-            cats.isEmpty() -> {
-                line(
-                    if (waiting || Store.busy(this)) "Беру монети із сервера…"
-                    else Store.error(this) ?: "Монет ще немає — онови дані. Якщо не з’являться, сервер ще старий: відкрий Марнотрат і спробуй пізніше.",
-                    14f,
-                )
-                button("Оновити") { refreshAndWait() }
-            }
-            else -> {
-                line("Яку витрату записувати з головного екрана? Тап по віджету — одразу екран суми цієї монети.", 14f)
-                for (cat in cats) box.addView(row(cat))
-            }
-        }
-        setContentView(ScrollView(this).apply { addView(box) })
-    }
-
-    /** Рядок списку: монета, як на головній, назва й скільки витрачено цього місяця. */
-    private fun row(cat: Head.Cat): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        minimumHeight = dp(56f)
-        setPadding(0, dp(6f), 0, dp(6f))
-        isClickable = true
-        isFocusable = true
-        val ta = obtainStyledAttributes(intArrayOf(android.R.attr.selectableItemBackground))
-        background = ta.getDrawable(0)
-        ta.recycle()
-        contentDescription = cat.name
-        setOnClickListener { choose(cat) }
-        addView(ImageView(context).apply {
-            setImageBitmap(CoinArt.bitmap(context, cat, 40))
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }, LinearLayout.LayoutParams(dp(40f), dp(40f)))
-        addView(LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14f), 0, 0, 0)
-            addView(TextView(context).apply {
-                text = cat.name
-                textSize = 16f
-                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            })
-            addView(TextView(context).apply {
-                text = Widgets.catSpent(cat)
-                textSize = 13f
-                alpha = 0.7f
-            })
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        })
     }
 
     private fun choose(cat: Head.Cat) {
@@ -139,25 +99,5 @@ class QuickConfigActivity : Activity() {
         val callback = PendingIntent.getBroadcast(this, cat.id.hashCode(), done, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         if (m.isRequestPinAppWidgetSupported) m.requestPinAppWidget(ComponentName(this, QuickWidget::class.java), null, callback)
         finish()
-    }
-
-    /** Оновлення йде у фоні (WorkManager) — дивимось раз на пів секунди, чи прийшли монети, до 15 с. */
-    private fun refreshAndWait() {
-        waiting = true
-        Widgets.refreshNow(this)
-        render()
-        var left = 30
-        val tick = object : Runnable {
-            override fun run() {
-                left -= 1
-                if (Store.head(this@QuickConfigActivity)?.cats.orEmpty().isNotEmpty() || left <= 0) {
-                    waiting = false
-                    render()
-                } else {
-                    main.postDelayed(this, 500)
-                }
-            }
-        }
-        main.postDelayed(tick, 500)
     }
 }

@@ -9,6 +9,20 @@ object Store {
 
     private fun prefs(c: Context) = c.getSharedPreferences("widget", Context.MODE_PRIVATE)
 
+    /**
+     * Екран застосунку перемальовується сам, коли прийшла шапка, помилка чи почалось оновлення.
+     * Слухача Android тримає слабким посиланням — його треба зберегти в полі й зняти в onStop.
+     */
+    fun listen(c: Context, onChange: () -> Unit): android.content.SharedPreferences.OnSharedPreferenceChangeListener {
+        val l = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> onChange() }
+        prefs(c).registerOnSharedPreferenceChangeListener(l)
+        return l
+    }
+
+    fun unlisten(c: Context, l: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs(c).unregisterOnSharedPreferenceChangeListener(l)
+    }
+
     fun config(c: Context): Config? {
         val p = prefs(c)
         val url = p.getString("url", null) ?: return null

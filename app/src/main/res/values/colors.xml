@@ -21,4 +21,8 @@
     <color name="coin_ok">#10CF8E</color>
     <color name="coin_warn">#FF8A00</color>
     <color name="coin_over">#E53935</color>
+    <!-- екрани застосунку (підключення, вибір монети): як тло й лінії Марнотрату -->
+    <color name="bg">#F7F7F7</color>
+    <color name="line">#E2E2E2</color>
+    <color name="brand_soft">#E2F3EC</color>
 </resources>

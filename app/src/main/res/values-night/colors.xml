@@ -19,4 +19,7 @@
     <color name="coin_ok">#138A62</color>
     <color name="coin_warn">#CC6E00</color>
     <color name="coin_over">#B8302B</color>
+    <color name="bg">#121417</color>
+    <color name="line">#30353C</color>
+    <color name="brand_soft">#173A2E</color>
 </resources>
