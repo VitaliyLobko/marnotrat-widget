@@ -2,6 +2,7 @@ package ua.vitaliylobko.marnotrat.widget
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.TextUtils
 import android.text.InputType
@@ -17,6 +18,7 @@ import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
@@ -26,7 +28,7 @@ import java.util.UUID
 
 /**
  * Швидкий запис витрати з віджета — шторка над головним екраном, без запуску Марнотрату: сума, коментар,
- * часті теги монети, «Записати».
+ * часті теги монети, рахунок (тап — інший у тій самій валюті), «Вчора» чи «Записати».
  * Витрата йде в чергу (Store.pending) і на сервер — через RefreshWorker; Марнотрат забере її при наступному обміні.
  * Рахунку немає (старий сервер) чи він в іншій валюті, ніж монета, — відкриваємо екран суми в Марнотраті:
  * перерахунок курсів є лише там.
@@ -36,6 +38,9 @@ class QuickAddActivity : Activity() {
     private val ui by lazy { Ui(this) }
     private lateinit var cat: Head.Cat
     private lateinit var acc: Head.Acc
+    // Рахунки у валюті монети — з них можна вибрати інший; один чи старий сервер — вибору нема
+    private var accs: List<Head.Acc> = emptyList()
+    private lateinit var accLine: TextView
     private var amount = ""
     private lateinit var amountView: TextView
     private lateinit var comment: EditText
@@ -50,7 +55,8 @@ class QuickAddActivity : Activity() {
             startActivity(Intent(this, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return finish()
         }
-        val live = Store.head(this)?.cats?.firstOrNull { it.id == id }
+        val head = Store.head(this)
+        val live = head?.cats?.firstOrNull { it.id == id }
         val a = live?.acc
         if (live == null || a == null || a.cur != live.cur) {
             startActivity(Widgets.openAdd(this, id))
@@ -58,6 +64,7 @@ class QuickAddActivity : Activity() {
         }
         cat = live
         acc = a
+        accs = head?.accs.orEmpty().filter { it.cur == live.cur }
         setContentView(build())
     }
 
@@ -110,12 +117,17 @@ class QuickAddActivity : Activity() {
             addView(keypad, ui.lp(12f))
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
+                // Набране не губиться: Марнотрат відкриє екран суми з ним
                 addView(ui.button("Більше", primary = false) {
-                    startActivity(Widgets.openAdd(this@QuickAddActivity, cat.id))
+                    startActivity(Widgets.openAdd(this@QuickAddActivity, cat.id, draft()))
                     finish()
                 }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-                addView(ui.gap(0f), LinearLayout.LayoutParams(ui.dp(10f), 1))
-                addView(ui.button("Записати") { save() }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
+                addView(ui.gap(0f), LinearLayout.LayoutParams(ui.dp(8f), 1))
+                // Як «Вчора» на екрані суми Марнотрату — записує одразу, вчорашньою датою
+                addView(ui.button("Вчора", primary = false) { save(LocalDate.now().minusDays(1)) },
+                    LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(ui.gap(0f), LinearLayout.LayoutParams(ui.dp(8f), 1))
+                addView(ui.button("Записати") { save(LocalDate.now()) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.6f))
             }, ui.lp(12f))
         }
         root.addView(sheet, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
@@ -135,8 +147,39 @@ class QuickAddActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(ui.dp(12f), 0, 0, 0)
             addView(ui.text(cat.name, 18f, bold = true))
-            addView(ui.text("з ${acc.name} · ${Widgets.catSpent(cat)}", 13f, R.color.muted))
+            accLine = ui.text("", 13f, R.color.muted)
+            addView(accLine)
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        paintAcc()
+        if (accs.size > 1) {
+            accLine.setTextColor(getColor(R.color.brand_text))
+            accLine.minHeight = ui.dp(32f)
+            accLine.gravity = Gravity.CENTER_VERTICAL
+            accLine.isClickable = true
+            accLine.isFocusable = true
+            accLine.setOnClickListener { pickAcc() }
+        }
+    }
+
+    /** «з Приват ▾ · витрачено …»: стрілка — лише коли є з чого вибрати. */
+    private fun paintAcc() {
+        val arrow = if (accs.size > 1) " ▾" else ""
+        accLine.text = "з ${acc.name}$arrow · ${Widgets.catSpent(cat)}"
+        accLine.contentDescription = if (accs.size > 1) "Рахунок ${acc.name}. Змінити" else null
+    }
+
+    /** Рахунки у валюті монети із залишком; вибраний — до кінця цього запису (звичний сервер рахує сам). */
+    private fun pickAcc() {
+        val menu = PopupMenu(this, accLine)
+        accs.forEachIndexed { i, x ->
+            val mark = if (x.id == acc.id) "✓ " else ""
+            menu.menu.add(0, i, i, "$mark${x.name} · ${Widgets.num(x.bal)} ${Widgets.unit(x.cur)}")
+        }
+        menu.setOnMenuItemClickListener { item ->
+            accs.getOrNull(item.itemId)?.let { acc = it; paintAcc() }
+            true
+        }
+        menu.show()
     }
 
     /** Часті теги монети чипами в один ряд, що гортається вбік; тап — вибрати чи зняти. */
@@ -229,9 +272,20 @@ class QuickAddActivity : Activity() {
         keypad.visibility = View.VISIBLE
     }
 
+    /** Сума з клавіш, округлена до копійок; нічого не набрано — 0. */
+    private fun value(): Double = amount.replace(',', '.').toDoubleOrNull()?.let { Math.round(it * 100) / 100.0 } ?: 0.0
+
+    /** Набране для «Більше» — query для widgetDraft у Марнотраті: a — сума, c — коментар, t — теги, f — рахунок. */
+    private fun draft(): String? = Uri.Builder().apply {
+        value().takeIf { it > 0 }?.let { appendQueryParameter("a", it.toString()) }
+        comment.text.toString().trim().takeIf { it.isNotEmpty() }?.let { appendQueryParameter("c", it) }
+        picked.forEach { appendQueryParameter("t", it) }
+        appendQueryParameter("f", acc.id)
+    }.build().encodedQuery
+
     /** Запис як у Марнотраті (store у js/app.js): id, from, to, amount, date, tags, comment, created + updated для злиття. */
-    private fun save() {
-        val v = amount.replace(',', '.').toDoubleOrNull()?.let { Math.round(it * 100) / 100.0 } ?: 0.0
+    private fun save(date: LocalDate) {
+        val v = value()
         if (v <= 0) {
             Toast.makeText(this, "Введи суму", Toast.LENGTH_SHORT).show()
             return
@@ -242,7 +296,7 @@ class QuickAddActivity : Activity() {
             .put("from", acc.id)
             .put("to", cat.id)
             .put("amount", v)
-            .put("date", LocalDate.now().toString())
+            .put("date", date.toString())
             .put("tags", JSONArray(picked.toList()))
             .put("comment", comment.text.toString().trim())
             .put("created", now)
@@ -250,7 +304,8 @@ class QuickAddActivity : Activity() {
         Store.enqueue(this, rec)
         Widgets.refreshNow(this)
         val tags = if (picked.isEmpty()) "" else " · " + picked.joinToString(" ") { "#$it" }
-        Toast.makeText(this, "Записано: −${amountView.text} · ${cat.name}$tags", Toast.LENGTH_SHORT).show()
+        val day = if (date == LocalDate.now()) "" else " вчора"
+        Toast.makeText(this, "Записано$day: −${amountView.text} · ${cat.name}$tags", Toast.LENGTH_SHORT).show()
         finish()
     }
 

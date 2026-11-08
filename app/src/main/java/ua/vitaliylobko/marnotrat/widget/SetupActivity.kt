@@ -7,9 +7,11 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -169,11 +171,30 @@ class SetupActivity : Activity() {
                 addView(ui.dot(R.color.brand), LinearLayout.LayoutParams(ui.dp(10f), ui.dp(10f)).apply { marginEnd = ui.dp(10f) })
                 addView(ui.text("Є нова версія $latest", 17f, bold = true))
             })
-            addView(ui.text("Chrome завантажить файл — відкрий його зі сповіщення чи «Завантажень» і натисни «Оновити». Віджети й підключення лишаться.", 14f, R.color.muted), ui.lp(6f))
-            addView(ui.button("Оновити") {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(APK_URL)))
+            addView(ui.text("Застосунок завантажить новий APK і покаже системне «Оновити». Уперше Android попросить дозволити встановлення з цього застосунку. Віджети й підключення лишаться.", 14f, R.color.muted), ui.lp(6f))
+            addView(ui.button(if (Updater.busy) "Завантажую…" else "Оновити") { selfUpdate() }.apply {
+                isEnabled = !Updater.busy
+                alpha = if (Updater.busy) 0.6f else 1f
             }, ui.lp(14f))
+            // Запасний шлях, якщо щось піде не так: файл через Chrome, відкрити вручну
+            addView(ui.button("Завантажити через Chrome", primary = false) {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(APK_URL)))
+            }, ui.lp(8f))
         }
+    }
+
+    /** Без дозволу «Встановлення невідомих застосунків» — спершу до нього; далі завантаження й системне вікно. */
+    private fun selfUpdate() {
+        if (!packageManager.canRequestPackageInstalls()) {
+            Toast.makeText(this, "Дозволь встановлення з цього застосунку й натисни «Оновити» ще раз", Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            return
+        }
+        Updater.start(this, APK_URL) { err ->
+            if (err != null) Toast.makeText(this, "Не вдалось завантажити: $err", Toast.LENGTH_LONG).show()
+            if (!isDestroyed) render()
+        }
+        render()
     }
 
     /**

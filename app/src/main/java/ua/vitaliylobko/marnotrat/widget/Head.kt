@@ -22,6 +22,8 @@ data class Head(
     val next: Next?,
     /** Монети витрат за порядком на головній — для віджета 1×1. Старий сервер їх не шле — порожньо. */
     val cats: List<Cat>,
+    /** Живі рахунки за порядком на головній, із залишком — вибір рахунку в шторці. Старий сервер — порожньо. */
+    val accs: List<Acc> = emptyList(),
 ) {
     data class Next(val date: String, val name: String, val v: Double)
 
@@ -41,7 +43,8 @@ data class Head(
         val tags: List<String> = emptyList(),
     )
 
-    data class Acc(val id: String, val name: String, val cur: String)
+    /** Рахунок; bal — залишок у його валюті (лише в accs, у cats[].acc — 0). */
+    data class Acc(val id: String, val name: String, val cur: String, val bal: Double = 0.0)
 
     val daysLeft: Int get() = (days - day + 1).coerceAtLeast(0)
 
@@ -73,6 +76,12 @@ data class Head(
             next = o.optJSONObject("next")?.let { Next(it.optString("date"), it.optString("name"), it.optDouble("v", 0.0)) },
             cats = o.optJSONArray("cats")?.let { a ->
                 (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let(::cat) }
+            } ?: emptyList(),
+            accs = o.optJSONArray("accs")?.let { a ->
+                (0 until a.length()).mapNotNull { i ->
+                    a.optJSONObject(i)?.let { Acc(it.optString("id"), it.optString("name"), it.optString("cur", "UAH"), it.optDouble("bal", 0.0)) }
+                        ?.takeIf { it.id.isNotEmpty() }
+                }
             } ?: emptyList(),
         )
 

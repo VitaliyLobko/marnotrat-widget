@@ -234,8 +234,10 @@ object Widgets {
     }
 
     /** Екран суми в Марнотраті — з вікна швидкого запису («Більше»), коли тут записати не вийде. */
-    fun openAdd(c: Context, catId: String): Intent =
-        Intent(Intent.ACTION_VIEW, Uri.parse(APP_URL + "#add/" + Uri.encode(catId))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    /** Екран суми в Марнотраті; draft — набране в шторці (query: a, c, t, f), Марнотрат підставить його (widgetDraft). */
+    fun openAdd(c: Context, catId: String, draft: String? = null): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse(APP_URL + "#add/" + Uri.encode(catId) + draft?.takeIf { it.isNotEmpty() }?.let { "/$it" }.orEmpty()))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     /** «грн», «$», «€» — як підписи в Марнотраті. */
     fun unit(cur: String): String = when (cur) {
