@@ -121,18 +121,24 @@ class QuickAddActivity : Activity() {
                 addView(ui.button("Більше", primary = false) {
                     startActivity(Widgets.openAdd(this@QuickAddActivity, cat.id, draft()))
                     finish()
-                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                }.narrow(), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 addView(ui.gap(0f), LinearLayout.LayoutParams(ui.dp(8f), 1))
                 // Як «Вчора» на екрані суми Марнотрату — записує одразу, вчорашньою датою
-                addView(ui.button("Вчора", primary = false) { save(LocalDate.now().minusDays(1)) },
+                addView(ui.button("Вчора", primary = false) { save(LocalDate.now().minusDays(1)) }.narrow(),
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 addView(ui.gap(0f), LinearLayout.LayoutParams(ui.dp(8f), 1))
-                addView(ui.button("Записати") { save(LocalDate.now()) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.6f))
+                addView(ui.button("Записати") { save(LocalDate.now()) }.narrow(), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.6f))
             }, ui.lp(12f))
         }
         root.addView(sheet, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
         paint()
         return root
+    }
+
+    /** Три кнопки в ряд на вузькому екрані (360 dp): менші бічні відступи, щоб «Більше» не переносилось. */
+    private fun TextView.narrow(): TextView = apply {
+        setPadding(ui.dp(8f), paddingTop, ui.dp(8f), paddingBottom)
+        maxLines = 1
     }
 
     /** Монета, назва, з якого рахунку й скільки вже витрачено цього місяця. */
