@@ -37,6 +37,8 @@ data class Head(
         val fill: Double,
         // Рахунок для швидкої витрати (сервер рахує як pairInto Марнотрату); старий сервер — null
         val acc: Acc? = null,
+        // Часті теги монети, найчастіший перший (сервер рахує як tagsFor Марнотрату); старий сервер — порожньо
+        val tags: List<String> = emptyList(),
     )
 
     data class Acc(val id: String, val name: String, val cur: String)
@@ -86,6 +88,9 @@ data class Head(
             acc = o.optJSONObject("acc")?.let { a ->
                 Acc(a.optString("id"), a.optString("name"), a.optString("cur", "UAH")).takeIf { it.id.isNotEmpty() }
             },
+            tags = o.optJSONArray("tags")?.let { a ->
+                (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }.distinct()
+            } ?: emptyList(),
         )
     }
 }

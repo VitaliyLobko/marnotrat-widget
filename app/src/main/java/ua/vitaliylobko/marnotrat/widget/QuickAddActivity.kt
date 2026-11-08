@@ -3,6 +3,7 @@ package ua.vitaliylobko.marnotrat.widget
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.text.TextUtils
 import android.text.InputType
 import android.view.Gravity
 import android.view.KeyEvent
@@ -13,6 +14,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -23,7 +25,8 @@ import java.time.LocalDate
 import java.util.UUID
 
 /**
- * Швидкий запис витрати з віджета — шторка над головним екраном, без запуску Марнотрату: сума, коментар, «Записати».
+ * Швидкий запис витрати з віджета — шторка над головним екраном, без запуску Марнотрату: сума, коментар,
+ * часті теги монети, «Записати».
  * Витрата йде в чергу (Store.pending) і на сервер — через RefreshWorker; Марнотрат забере її при наступному обміні.
  * Рахунку немає (старий сервер) чи він в іншій валюті, ніж монета, — відкриваємо екран суми в Марнотраті:
  * перерахунок курсів є лише там.
@@ -37,6 +40,8 @@ class QuickAddActivity : Activity() {
     private lateinit var amountView: TextView
     private lateinit var comment: EditText
     private lateinit var keypad: LinearLayout
+    // Вибрані теги в порядку тапів — так їх і запише Марнотрат
+    private val picked = linkedSetOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -99,6 +104,8 @@ class QuickAddActivity : Activity() {
                 }
             }
             addView(comment, ui.lp(12f))
+            // Теги — над клавішами, як у Марнотраті; нових тегів монета ще не має — ряду нема, решта — «Більше»
+            if (cat.tags.isNotEmpty()) addView(tagRow(), ui.lp(10f))
             keypad = keypad()
             addView(keypad, ui.lp(12f))
             addView(LinearLayout(context).apply {
@@ -130,6 +137,44 @@ class QuickAddActivity : Activity() {
             addView(ui.text(cat.name, 18f, bold = true))
             addView(ui.text("з ${acc.name} · ${Widgets.catSpent(cat)}", 13f, R.color.muted))
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+    }
+
+    /** Часті теги монети чипами в один ряд, що гортається вбік; тап — вибрати чи зняти. */
+    private fun tagRow(): View = HorizontalScrollView(this).apply {
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = View.OVER_SCROLL_NEVER
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            cat.tags.forEachIndexed { i, t ->
+                val chip = ui.text(t, 15f).apply {
+                    gravity = Gravity.CENTER
+                    minHeight = ui.dp(40f)
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
+                    maxWidth = ui.dp(200f)
+                    setPadding(ui.dp(14f), 0, ui.dp(14f), 0)
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = "Тег $t"
+                    setOnClickListener { v ->
+                        if (!picked.remove(t)) picked.add(t)
+                        paintChip(v as TextView, t)
+                    }
+                }
+                paintChip(chip, t)
+                addView(chip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    if (i > 0) marginStart = ui.dp(8f)
+                })
+            }
+        })
+    }
+
+    /** Вибраний тег — заливка бренду, як .amt-tag.on у Марнотраті; isSelected — щоб TalkBack казав «вибрано». */
+    private fun paintChip(chip: TextView, t: String) {
+        val on = t in picked
+        chip.isSelected = on
+        chip.setBackgroundResource(if (on) R.drawable.chip_on else R.drawable.chip_off)
+        chip.setTextColor(getColor(if (on) R.color.on_brand else R.color.text))
     }
 
     /** 1–9, кома, 0, ⌫ — як клавіші суми в Марнотраті. */
@@ -198,13 +243,14 @@ class QuickAddActivity : Activity() {
             .put("to", cat.id)
             .put("amount", v)
             .put("date", LocalDate.now().toString())
-            .put("tags", JSONArray())
+            .put("tags", JSONArray(picked.toList()))
             .put("comment", comment.text.toString().trim())
             .put("created", now)
             .put("updated", now)
         Store.enqueue(this, rec)
         Widgets.refreshNow(this)
-        Toast.makeText(this, "Записано: −${amountView.text} · ${cat.name}", Toast.LENGTH_SHORT).show()
+        val tags = if (picked.isEmpty()) "" else " · " + picked.joinToString(" ") { "#$it" }
+        Toast.makeText(this, "Записано: −${amountView.text} · ${cat.name}$tags", Toast.LENGTH_SHORT).show()
         finish()
     }
 
